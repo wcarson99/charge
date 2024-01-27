@@ -1,0 +1,58 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+body {
+  font-family: 'Press Start 2P', cursive;
+  background: repeating-linear-gradient(to bottom, #0f0a8e, #0f0a1e 2px, #140e29 2px, #140e29 4px);
+}
+#coin {
+  position: relative;
+//top: 0;
+  left: 0;
+  bottom: -30px;
+  right: 0;
+  height: 90px;
+  color: #fff;
+  width: 100%;
+  text-align: center;
+  margin: auto;
+  font-size: 25px;
+  line-height: 40px;
+  letter-spacing: 5px;
+  text-shadow: -2px 0 0 #fdff2a, -4px 0 0 #df4a42, 2px 0 0 #91fcfe, 4px 0 0 #4405fc;
+  animation: blink 1s steps(4, start) infinite;
+}
+
+#coin a { color: inherit; } 
+
+
+/*
+@-moz-keyframes blink {
+  to {
+    visibility: hidden;
+  }
+}
+@-webkit-keyframes blink {
+  to {
+    visibility: hidden;
+  }
+}
+@-o-keyframes blink {
+  to {
+    visibility: hidden;
+  }
+}
+  
+@keyframes blink {
+  to {
+    visibility: hidden;
+  }
+}
+  
+*/
+#game-div{
+      height:80vh; 
+}
