@@ -87,19 +87,9 @@ class Unit
         this.index = index
         this.row = row
         this.column = column
-        const image = this.owner.scene.add.image(column*squareX,row*squareY,type)
-        image.setDisplaySize(squareX,squareY)
-        image.setInteractive({ draggable: true})
-        /*
-        const container = this.owner.scene.add.container(column*squareX,row*squareY)
-        container.setSize(80,80)
-        container.setInteractive({draggable: true})
-        container.add([image])
-        container.on('drag', (pointer, dragX, dragY) => container.setPosition(dragX,dragY))
-        container.on('pointerover', (pointer) => image.setTint(0x808080))
-        container.on('pointerout', (pointer) => image.clearTint())
-        //owner.container.add(image)
-        */
+        this.image = this.owner.scene.add.image(column*squareX,row*squareY,type)
+        this.image.setDisplaySize(squareX,squareY)
+        owner.container.add(this.image)
     }
 }
 
@@ -135,7 +125,6 @@ TODO: Should map be a separate object?
         for (let r = 0; r < mapDef.length; r++)
         {
             let row = mapDef[r]
-            console.log(row)
             this.mapData[r] = [];
             for (let c = 0; c < row.length; c++)
             {
@@ -146,6 +135,22 @@ TODO: Should map be a separate object?
         }  
     }
 
+    updateMap()
+    {
+        for (let r of this.mapData)
+        {
+            for (let square of r)
+            {
+                // Pop contents and add them to the appropriate square
+                let contents = square.contents
+                if (contents.length>0) {
+                    for (let unit of contents) {
+                        unit.image.y +=squareY
+                    }
+                }
+            }
+        }
+    }
     addUnits() 
     {
         this.unitData = []
@@ -157,7 +162,6 @@ TODO: Should map be a separate object?
             console.log(def)
             const unit = new Unit(this, i, 'unit_'+def.typ, def.c, def.r)
             this.mapData[def.c][def.r].contents.push(unit)
-
             i++
         } 
     }
@@ -172,6 +176,7 @@ TODO: Should map be a separate object?
             i++
         }
     }
+
 }
 
 class Example extends Phaser.Scene
@@ -199,59 +204,20 @@ class Example extends Phaser.Scene
         this.board = new Board(this, boardRows, boardColumns)
         this.stateText.setText('waiting_for_actions')
 
-        this.goButton = this.add.container(300,720)
-        this.goButton.setSize(80,80)
-        this.goButton.setInteractive({draggable: true})
         const goButtonImg = this.add.image(0,0,"button_charge")
+        this.goButton = this.add.container(250,720)
+        this.goButton.setSize(80,80)
+        this.goButton.setInteractive()
         this.goButton.add([goButtonImg])
-        this.goButton.on('drag', (pointer, dragX, dragY) => this.goButton.setPosition(dragX,dragY))
         this.goButton.on('pointerover', (pointer) => goButtonImg.setTint(0x808080))
         this.goButton.on('pointerout', (pointer) => goButtonImg.clearTint())
-        
-        this.input.on('drag', function (pointer, gameObject, dragX, dragY) {
+        this.goButton.on('pointerup', (pointer) => this.board.updateMap())
 
+        this.input.on('drag', function (pointer, gameObject, dragX, dragY) {
             gameObject.x = dragX;
             gameObject.y = dragY;
         })
-        //console.log('State is '+this.stateText.text)
-        if (false) 
-        {
-            const bg = this.add.image(0, 0, 'buttonBG');
-            const text = this.add.image(0, 0, 'buttonText');
-    
-            this.board = this.add.container(squareX*boardColumns/10,squareY*boardRows);
-            //this.board.setSize(boardRows*squareX, boardColumns*squareY)
-    
-            const container = this.add.container(100, 400, [ bg, text ]);
-    
-            container.setSize(bg.width, bg.height);
-    
-            container.setInteractive();
-    
-            this.input.setDraggable(container);
-    
-            container.on('pointerover', () =>
-            {
-    
-                bg.setTint(0x44ff44);
-    
-            });
-    
-            container.on('pointerout', () =>
-            {
-    
-                bg.clearTint();
-    
-            });
-    
-            this.input.on('drag', (pointer, gameObject, dragX, dragY) =>
-            {
-    
-                gameObject.x = dragX;
-                gameObject.y = dragY;
-    
-            });
-        }
+
         this.timedEvent = this.time.addEvent({ delay: 2000, callback: this.onTimer, callbackScope: this, loop: true });
 
     }
