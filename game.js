@@ -21,6 +21,11 @@ const square_types = {
     's': 'square_sand',
     'w': 'unit_wall'
 }
+
+const unit_defs = {
+    'soldier': {'atk':1, 'hp':10}
+}
+
 const levels = [
     {
         map:
@@ -38,27 +43,59 @@ const levels = [
             ],
         players:
         {
-            0:
+            'computer':
             {
+                hp: 10,
+                attack: 2,
+                shield: 2,
                 units:
                     [{ c: 0, r: 0, typ: 'soldier' },
                      { c: 3, r: 0, typ: 'soldier' }
-                    ]
+                    ],
+                rowChange: 1
+            },
+            'human':
+            {
+                hp:10,
+                attack: 2,
+                shield: 2,
+                units: [],
+                rowChange: -1
             }
         }
     }
 ]
 
+class Player 
+{
+    constructor(board, x, y, defn)
+    {
+        this.board = board;
+        this.hp = defn.hp
+        this.attack = defn.attack
+        this.shield = defn.shield
+        this.rowChange = defn.rowChange
+        this.container = board.scene.add.container(x,y)
+        this.hpText = board.scene.add.text(
+            0,0,'HP '+this.hp+' ATK '+this.attack+' SHD '+this.shield, 
+            { fontSize: '28px'})
+        this.container.add(this.hpText)
+    }
+    update() 
+    {
+
+    }
+}
 class Square
 {
-    constructor(board, index, type, x, y)
+    constructor(board, index, type, c, r)
     {
         this.board = board;
         this.index = index;
-        this.x = x;
-        this.y = y;
+        this.c = c;
+        this.r = r;
         this.contents = [];
-        let image = this.board.scene.add.image(x*squareX,y*squareY,type)
+        let image = this.board.scene.add.image(c*squareX,r*squareY,type)
         image.setDisplaySize(squareX,squareY)
         board.container.add(image)
     }
@@ -98,11 +135,13 @@ class Board
 TODO: Should map be a separate object?
 */
 {
-    constructor(scene, rows, columns, level)
+    constructor(scene, rows, columns, levelNum)
     {
         this.scene = scene;
         this.rows = rows;
         this.columns = columns
+        this.level = levels[levelNum]
+        console.log(this.level)
         let x = squareX*columns
         let y = squareY*rows
         
@@ -111,17 +150,19 @@ TODO: Should map be a separate object?
         this.createMap()
         this.addUnits()
 
-        this.items = scene.add.container(100,800)
+        this.items = scene.add.container(100,820)
         this.items.setSize(numItems*squareX,squareY)
         this.createItems();
+
+        this.computer = new Player(this, 100,60, this.level.players.computer)
+        this.human = new Player(this, 100,700, this.level.players.human)
     }
 
     createMap()
     {
         let i = 0;
         this.mapData = []
-        let level = levels[0]
-        let mapDef = level.map
+        let mapDef = this.level.map
         for (let r = 0; r < mapDef.length; r++)
         {
             let row = mapDef[r]
@@ -155,7 +196,7 @@ TODO: Should map be a separate object?
     {
         this.unitData = []
         let level = levels[0]
-        let units_def = level.players[0].units
+        let units_def = level.players["computer"].units
         let i = 0
         for (let def of units_def)
         {
@@ -201,17 +242,17 @@ class Example extends Phaser.Scene
 
         timeText = this.add.text(100,0,'time: ', { fontSize: '14px'})
         this.stateText = this.add.text(100,20,'uninitialized', { fontSize: '14px'})
-        this.board = new Board(this, boardRows, boardColumns)
+        this.board = new Board(this, boardRows, boardColumns,0)
         this.stateText.setText('waiting_for_actions')
 
-        const goButtonImg = this.add.image(0,0,"button_charge")
-        this.goButton = this.add.container(250,720)
-        this.goButton.setSize(80,80)
-        this.goButton.setInteractive()
-        this.goButton.add([goButtonImg])
-        this.goButton.on('pointerover', (pointer) => goButtonImg.setTint(0x808080))
-        this.goButton.on('pointerout', (pointer) => goButtonImg.clearTint())
-        this.goButton.on('pointerup', (pointer) => this.board.updateMap())
+        const chargeButtonImg = this.add.image(0,0,"button_charge")
+        this.chargeButton = this.add.container(250,760)
+        this.chargeButton.setSize(80,80)
+        this.chargeButton.setInteractive()
+        this.chargeButton.add([chargeButtonImg])
+        this.chargeButton.on('pointerover', (pointer) => chargeButtonImg.setTint(0x808080))
+        this.chargeButton.on('pointerout', (pointer) => chargeButtonImg.clearTint())
+        this.chargeButton.on('pointerup', (pointer) => this.board.updateMap())
 
         this.input.on('drag', function (pointer, gameObject, dragX, dragY) {
             gameObject.x = dragX;
@@ -229,7 +270,7 @@ class Example extends Phaser.Scene
             url: "https://worldtimeapi.org/api/timezone/Etc/UTC",
             success: function (data) {
                 //console.log(data)
-                let timeStr = data['datetime']
+                let timeStr = data['datetime'].split('T')[1].split('.')[0]
                 timeText.setText('time: ' + timeStr)
             }
         });
@@ -244,17 +285,12 @@ class Example extends Phaser.Scene
                     let player = data['public']
                     console.log(player)
                     for (unit in player['units']) {
-
                     }
-
                 }
             });
             this.stateText.setText('state: ' + stateStr)
             this.units.removeAll(true)
             this.update_board()
-
-
-
         }
     }   
 }
@@ -264,7 +300,7 @@ const config = {
     type: Phaser.AUTO,
     width: 600,
     height: 900,
-    backgroundColor: '#010101',
+    backgroundColor: '#4a6741',
     parent: 'phaser-example',
     scene: Example
 };
