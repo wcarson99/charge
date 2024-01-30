@@ -22,8 +22,8 @@ const square_types = {
     'w': 'unit_wall'
 }
 
-const unit_defs = {
-    'soldier': {'atk':1, 'hp':10}
+const unitDefns = {
+    'unit_soldier': {'attack':1, 'hp':10, 'shield':0}
 }
 
 const levels = [
@@ -117,14 +117,22 @@ class Item
 
 class Unit
 {
-    constructor(owner, index, type, column, row)
+    constructor(owner, index, typ, column, row, rowChange)
     {
-        console.log(type)
+        console.log(typ)
         this.owner = owner
         this.index = index
-        this.row = row
+        this.typ = typ
         this.column = column
-        this.image = this.owner.scene.add.image(column*squareX,row*squareY,type)
+        this.row = row
+        this.rowChange = rowChange
+        this.defn = unitDefns[typ]
+        console.log(this.defn)
+        this.attack = this.defn.attack
+        this.hp = this.defn.hp
+        this.shield = this.defn.shield
+
+        this.image = this.owner.scene.add.image(column*squareX,row*squareY,typ)
         this.image.setDisplaySize(squareX,squareY)
         owner.container.add(this.image)
     }
@@ -186,11 +194,22 @@ TODO: Should map be a separate object?
                 let contents = square.contents
                 if (contents.length>0) {
                     for (let unit of contents) {
-                        unit.image.y +=squareY
+                        let newRow = unit.row+unit.rowChange
+                        if (newRow==boardRows)
+                        {
+                            this.human.hp = this.human.hp - unit.attack
+                        }
+                        else
+                        {
+                            unit.row = newRow
+                            unit.image.y +=squareY
+                            console.log(unit)
+                        }
                     }
                 }
             }
         }
+        this.human.hpText.setText('HP '+this.human.hp+' ATK '+this.human.attack+' SHD '+this.human.shield)
     }
     addUnits() 
     {
@@ -201,7 +220,7 @@ TODO: Should map be a separate object?
         for (let def of units_def)
         {
             console.log(def)
-            const unit = new Unit(this, i, 'unit_'+def.typ, def.c, def.r)
+            const unit = new Unit(this, i, 'unit_'+def.typ, def.c, def.r, 1)
             this.mapData[def.c][def.r].contents.push(unit)
             i++
         } 
@@ -217,7 +236,6 @@ TODO: Should map be a separate object?
             i++
         }
     }
-
 }
 
 class Example extends Phaser.Scene
@@ -260,7 +278,6 @@ class Example extends Phaser.Scene
         })
 
         this.timedEvent = this.time.addEvent({ delay: 2000, callback: this.onTimer, callbackScope: this, loop: true });
-
     }
 
     onTimer()
@@ -284,7 +301,7 @@ class Example extends Phaser.Scene
                     stateStr = data['state']
                     let player = data['public']
                     console.log(player)
-                    for (unit in player['units']) {
+                    for (let unit in player['units']) {
                     }
                 }
             });
