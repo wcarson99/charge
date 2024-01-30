@@ -78,7 +78,7 @@ class Player
         this.container = board.scene.add.container(x,y)
         this.hpText = board.scene.add.text(
             0,0,'HP '+this.hp+' ATK '+this.attack+' SHD '+this.shield, 
-            { fontSize: '28px'})
+            { fontSize: '28px', fontFamily:'Arial'})
         this.container.add(this.hpText)
     }
     update() 
@@ -132,9 +132,24 @@ class Unit
         this.hp = this.defn.hp
         this.shield = this.defn.shield
 
-        this.image = this.owner.scene.add.image(column*squareX,row*squareY,typ)
+        this.container = owner.scene.add.container(column*squareX,row*squareY)
+        this.container.setSize(squareX,squareY)
+        this.image = owner.scene.add.image(0,0,typ)
         this.image.setDisplaySize(squareX,squareY)
-        owner.container.add(this.image)
+        this.container.add(this.image)
+        this.statusText = owner.scene.add.text(-24,16,this.statusString(), 
+        { fontSize: '10px', fontFamily:'Arial', color:'Black'})
+        this.container.add(this.statusText)
+
+        owner.container.add(this.container)
+    }
+    statusString()
+    {
+        return 'A'+this.attack+' S'+this.shield+' H'+this.hp
+    }
+    update()
+    {
+        this.statusText.setText(this.statusString())
     }
 }
 
@@ -198,13 +213,15 @@ TODO: Should map be a separate object?
                         if (newRow==boardRows)
                         {
                             this.human.hp = this.human.hp - unit.attack
+                            unit.hp = unit.hp - this.human.attack
                         }
                         else
                         {
                             unit.row = newRow
-                            unit.image.y +=squareY
+                            unit.container.y += squareY
                             console.log(unit)
                         }
+                        unit.update()
                     }
                 }
             }
