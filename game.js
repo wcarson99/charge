@@ -145,7 +145,6 @@ class Unit
 {
     constructor(owner, index, typ, column, row, rowChange)
     {
-        console.log(typ)
         this.owner = owner
         this.index = index
         this.typ = typ
@@ -178,8 +177,9 @@ class Unit
     destroy()
     {
         this.container.destroy()
+        //this.image.destroy()
     }
-    damage(units)
+    dealDamage(units)
     {
         let numDefenders = units.length
         let unitDamage = this.attack/numDefenders
@@ -214,6 +214,7 @@ class Square
         this.column = c;
         this.row = r;
         this.contents = [];
+        this.nextContents = []
         this.image = board.scene.add.image(c*squareX,r*squareY,type)
         this.image.setDisplaySize(squareX,squareY)
         this.image.setSize(squareX,squareY)
@@ -238,7 +239,37 @@ class Square
 
     resolveCombat()
     {
+        while (false) //(this.contents.length>1)
+        {
+            // Deal damage
+            let c = this.contents
+            console.log("before")        
+            console.log(this.contents)
 
+            for (let unit of c)
+            {
+                unit.dealDamage(c)
+            }
+            console.log("after")        
+            console.log(this.contents)
+            stop()
+
+                // Remove dead units
+            let newContents = []
+            for (let unit of c)
+            {
+                if (unit.hp<=0)
+                {
+                    unit.destroy()
+                }
+                else
+                {
+                    newContents.push(unit)
+                }
+            }
+            this.contents = newContents
+        }
+        this.update()
     }
 }
 
@@ -288,44 +319,50 @@ class Board
             for (let square of r)
             {
                 let contents = square.contents
-                let newContents = []
-                if (contents.length>0) {
-                    while (contents.length>0)
+                //let newContents = []
+                while (contents.length>0)
+                {
+                    let unit = contents.pop()
+                    let newRow = unit.row + unit.rowChange
+                    if (newRow==boardRows)
                     {
-                        let unit = contents.pop()
-                        let newRow = unit.row+unit.rowChange
-                        if (newRow==boardRows)
+                        this.human.hp = this.human.hp - unit.attack
+                        unit.hp = unit.hp - this.human.attack
+                        if (unit.hp<=0)
                         {
-                            this.human.hp = this.human.hp - unit.attack
-                            unit.hp = unit.hp - this.human.attack
-                            if (unit.hp<=0)
-                            {
-                                unit.destroy()
-                                continue
-                            }
+                            unit.destroy()
+                            continue
                         }
-                        else if (newRow==-1)
-                        {
-                            this.computer.hp = this.computer.hp - unit.attack
-                            unit.hp = unit.hp - this.computer.attack
-                            if (unit.hp<=0)
-                            {
-                                unit.destroy()
-                                continue
-                            }
-                        }
-                        else
-                        {
-                            console.log(unit)
-                            unit.row = newRow
-                            unit.container.y += squareY*unit.rowChange
-                            console.log(unit)
-                        }
-                        unit.update()
-                        newContents.push(unit)
                     }
-                square.contents = newContents
+                    else if (newRow==-1)
+                    {
+                        this.computer.hp = this.computer.hp - unit.attack
+                        unit.hp = unit.hp - this.computer.attack
+                        if (unit.hp<=0)
+                        {
+                            unit.destroy()
+                            continue
+                        }
+                    }
+                    else
+                    {
+                        //console.log(unit)
+                        unit.row = newRow
+                        unit.container.y += squareY*unit.rowChange
+                        //console.log(unit)
+                    }
+                    this.mapData[unit.row][unit.column].nextContents.push(unit)
+                    unit.update()
                 }
+            }
+        }
+        // Update square contents
+        for (let r of this.mapData)
+        {
+            for (let square of r)
+            {
+                square.contents = square.nextContents
+                square.nextContents = []
             }
         }
 
@@ -334,43 +371,7 @@ class Board
         {
             for (let square of r)
             {
-                let done = false
-                while (false)
-                {
-                    done = true
-                    // Deal damage
-                    let c = square.contents
-                    if (c.length>1)
-                    {            
-                        console.log("before")        
-                        console.log(square)
-
-                        for (let unit in c)
-                        {
-                            unit.damage(c)
-                        }
-                        console.log("after")        
-                        console.log(square)
-                    }
-                    // Remove dead units
-                    let newContents = []
-                    for (let unit in c)
-                    {
-                        if (unit.hp<=0)
-                        {
-                            unit.destroy()
-                        }
-                        else
-                        {
-                            newContents.push(unit)
-                        }
-                    }
-                    this.contents = newContents
-                    if (newContents.length>1)
-                    {
-                        done = false
-                    }
-                }
+                square.resolveCombat()
             }
         }
 
