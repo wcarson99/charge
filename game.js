@@ -24,7 +24,8 @@ const square_types = {
 }
 
 const unitDefns = {
-    'unit_soldier': {'attack':1, 'hp':10, 'shield':0}
+    'unit_soldier': {'attack':1, 'hp':10, 'shield':0},
+    'unit_shield': {'attack':1, 'hp':10, 'shield':1}
 }
 
 const levels = [
@@ -32,15 +33,15 @@ const levels = [
         map:
             [
                 "......",
-                ".s....",
                 "......",
-                "..s...",
                 "......",
-                "..s...",
                 "......",
-                "...s..",
                 "......",
-                "....s.",
+                "......",
+                "......",
+                "......",
+                "......",
+                "......",
                 "......"
             ],
         players:
@@ -54,15 +55,18 @@ const levels = [
                     [{ c: 0, r: 0, typ: 'unit_soldier' },
                      { c: 3, r: 0, typ: 'unit_soldier' }
                     ],
-                rowChange: 1
+                rowChange: 1,
+                color: '#3000f0'
             },
             'human':
             {
                 hp:10,
                 attack: 2,
                 shield: 2,
-                units: [],
-                rowChange: -1
+                items: [{ typ:'unit_soldier', num:5},
+                        { typ:'unit_shield', num:2}],
+                rowChange: -1,
+                color: '#fb0000'
             }
         }
     }
@@ -79,16 +83,17 @@ class Player
         this.rowChange = defn.rowChange
         this.container = board.scene.add.container(x,y)
         this.hpText = board.scene.add.text(
-            0,0,'HP '+('0'+this.hp).slice(-2)
-            +' AT '+('0'+this.attack).slice(-2)
-            +' SH '+('0'+this.shield).slice(-2), 
-            { fontSize: '32px', fontFamily:'Courier'})
+            0,0,'', 
+            { fontSize: '32px', fontFamily:'Courier', color:defn['color']})
         this.hpText.setOrigin(0.5,0)
         this.container.add(this.hpText)
+        this.update()
     }
     update() 
     {
-        this.hpText.setText('HP '+this.hp+' ATK '+this.attack+' SHD '+this.shield)
+        this.hpText.setText('HP '+('0'+this.hp).slice(-2)
+        +' AT '+('0'+this.attack).slice(-2)
+        +' SH '+('0'+this.shield).slice(-2))
     }
 }
 
@@ -100,7 +105,7 @@ class Item
         this.index = index
         this.typ = typ
         this.column = column;
-        let image = this.items.scene.add.image(column*squareX,0,typ)
+        let image = this.items.scene.add.image(column*squareX,0,typ+'_up')
         image.setData('obj', this)
         image.setData('newSquare',undefined)
         image.setDisplaySize(squareX,squareY)
@@ -113,7 +118,7 @@ class Item
 
 class Items
 {
-    constructor(scene, levelNum, x, y)
+    constructor(scene, levelNum, x, y, defn)
     {
         this.scene = scene
         this.level = levels[levelNum]
@@ -125,21 +130,31 @@ class Items
             
             }
         )
-        this.addItems();
+        this.addItems(defn);
     }
     remove(item)
     {
         this.group.remove(item)
     }
 
-    addItems()
+    addItems(defn)
     {   
-        let i = 0;
+        console.log(defn)
+        let c = 0;
         this.itemData = []
-        for (let c = 0; c<numItems; c++)
+        for (let itemDefn of defn)
         {
-            this.itemData[c] = new Item(this, i, 'unit_soldier',c,0)
-            i++
+            let typ = itemDefn['typ']
+            let num = itemDefn['num']
+            for (let i=0; i<num; i++)
+            {
+                this.itemData[c] = new Item(this, c, typ,c,-1)
+                c++
+                if (c>=6)
+                {
+                    break
+                }    
+            }
         }
     }
 }
@@ -160,10 +175,20 @@ class Unit
         this.hp = this.defn.hp
         this.shield = this.defn.shield
 
-        this.image = owner.scene.add.image(0,0,typ)
+        let imageName = typ
+        if (rowChange>0)
+        {
+            imageName += '_down'
+        }
+        else
+        {
+            imageName += '_up'
+        }
+
+        this.image = owner.scene.add.image(0,0,imageName)
         this.image.setDisplaySize(squareX,squareY)
         this.statusText = owner.scene.add.text(-24,16,this.statusString(), 
-            { fontSize: '10px', fontFamily:'Arial', color:'Black'})
+            { fontSize: '10px', fontFamily:'Arial', color:'White'})
         this.container = owner.scene.add.container(column*squareX, row*squareY, [this.image,this.statusText])
         this.container.setSize(squareX,squareY)
 
@@ -234,6 +259,9 @@ class Square
         this.text = board.scene.add.text(c*squareX,r*squareY,this.contents.length, { fontSize: '40px'})
         this.text.setOrigin(0.5)
         board.container.add(this.text)
+        // Remove to see the number of units on a square
+        this.text.setVisible(false)
+
     }
 
     addUnit(unit)
@@ -422,7 +450,9 @@ class Play extends Phaser.Scene
         this.load.image('square_empty', 'assets/square_empty.png');
         this.load.image('square_sand', 'assets/square_sand.png');
         this.load.image('unit_wall', 'assets/unit_wall.png');
-        this.load.image('unit_soldier', 'assets/unit_soldier.png');
+        this.load.image('unit_soldier_up', 'assets/unit_soldier_up.png');
+        this.load.image('unit_soldier_down', 'assets/unit_soldier_down.png');
+        this.load.image('unit_shield_up', 'assets/unit_shield_up.png');
     }
 
     timerEvent;
@@ -431,8 +461,10 @@ class Play extends Phaser.Scene
     create ()
     {
         timeText = this.add.text(100,0,'time: ', { fontSize: '14px'})
+        let levelNum = 0
+        let levelDefn = levels[levelNum]
         board = new Board(this, boardRows, boardColumns,0)
-        items = new Items(this, 0,100,850)
+        items = new Items(this, 0,100,850, levelDefn['players']['human']['items'])
 
         const chargeButtonImg = this.add.image(0,0,"button_charge")
         const chargeButton = this.add.container(250,800)
@@ -446,8 +478,6 @@ class Play extends Phaser.Scene
         this.physics.add.overlap(board.group, items.group, function(squareImage, itemImage)
         {   
             let square = squareImage.getData('obj')
-            //let row = square.row
-            //let column = square.column
             let item = itemImage.getData('obj')
             item.newSquare = square
         })
@@ -456,7 +486,7 @@ class Play extends Phaser.Scene
             gameObject.x = dragX;
             gameObject.y = dragY;
         })
-        // TODO: Only allow units to be added at bottom row
+
         this.input.on('dragend', function (pointer, gameObject) {
             console.log('Here '+gameObject)
             console.log(gameObject)
@@ -518,7 +548,8 @@ const config = {
         default: 'arcade',
         arcade: {
             //gravity: { y: 300 },
-            debug: true
+            // If you want to see hit boxes
+            //debug: true
         }
     },
     scene: Play
