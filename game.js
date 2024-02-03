@@ -7,7 +7,7 @@ For Glitch - https://en.flossmanuals.net/phaser-game-making-in-glitch/_full/
 
 const squareX = 60;
 const squareY = 60;
-const boardRows = 10;
+const boardRows = 11;
 const boardColumns = 6;
 const boardCenterX = squareX*boardColumns/2
 const boardCenterY = squareY*boardRows/2
@@ -36,6 +36,7 @@ const levels = [
                 "......",
                 "..s...",
                 "......",
+                "..s...",
                 "......",
                 "...s..",
                 "......",
@@ -109,12 +110,12 @@ class Item
 
 class Items
 {
-    constructor(scene, levelNum)
+    constructor(scene, levelNum, x, y)
     {
         this.scene = scene
         this.level = levels[levelNum]
 
-        this.container = scene.add.container(100,820)
+        this.container = scene.add.container(x,y)
         this.container.setSize(numItems*squareX,squareY)
         this.group = scene.physics.add.group(
             {
@@ -125,8 +126,6 @@ class Items
     }
     remove(item)
     {
-        console.log('Removing')
-        console.log(item)
         this.group.remove(item)
     }
 
@@ -140,7 +139,6 @@ class Items
             i++
         }
     }
-
 }
 
 class Unit
@@ -154,20 +152,18 @@ class Unit
         this.column = column
         this.row = row
         this.rowChange = rowChange
+
         this.defn = unitDefns[typ]
-        console.log(this.defn)
         this.attack = this.defn.attack
         this.hp = this.defn.hp
         this.shield = this.defn.shield
 
-        this.container = owner.scene.add.container(column*squareX,row*squareY)
-        this.container.setSize(squareX,squareY)
         this.image = owner.scene.add.image(0,0,typ)
         this.image.setDisplaySize(squareX,squareY)
-        this.container.add(this.image)
         this.statusText = owner.scene.add.text(-24,16,this.statusString(), 
-        { fontSize: '10px', fontFamily:'Arial', color:'Black'})
-        this.container.add(this.statusText)
+            { fontSize: '10px', fontFamily:'Arial', color:'Black'})
+        this.container = owner.scene.add.container(column*squareX, row*squareY, [this.image,this.statusText])
+        this.container.setSize(squareX,squareY)
 
         owner.container.add(this.container)
     }
@@ -179,6 +175,34 @@ class Unit
     {
         this.statusText.setText(this.statusString())
     }
+    destroy()
+    {
+        this.container.destroy()
+    }
+    damage(units)
+    {
+        let numDefenders = units.length
+        let unitDamage = this.attack/numDefenders
+        for (let unit of units)
+        {   
+            if (unit==this)
+            {
+                console.log('Me')
+                continue
+            }
+            let damage = unitDamage
+            if (unit.shield<damage)
+            {
+                unit.shield -= damage
+            }
+            else
+            {
+                damage -= unit.shield
+                unit.shield = 0
+                unit.hp -= shield
+            }
+        }
+    }
 }
 
 class Square
@@ -189,23 +213,36 @@ class Square
         this.index = index;
         this.column = c;
         this.row = r;
-        //this.contents = [];
-        let image = board.scene.add.image(c*squareX,r*squareY,type)
-        image.setDisplaySize(squareX,squareY)
-        image.setSize(squareX,squareY)
-        image.setData('row',r)
-        image.setData('column',c)
-        image.setData('contents',[])
-        board.container.add(image)
-        this.image = image
-        board.group.add(image) 
+        this.contents = [];
+        this.image = board.scene.add.image(c*squareX,r*squareY,type)
+        this.image.setDisplaySize(squareX,squareY)
+        this.image.setSize(squareX,squareY)
+        this.image.setData('obj',this)
+        board.container.add(this.image)
+        board.group.add(this.image) 
+
+        this.text = board.scene.add.text(c*squareX,r*squareY,this.contents.length, { fontSize: '28px'})
+        board.container.add(this.text)
+    }
+
+    addUnit(unit)
+    {
+        this.contents.push(unit)
+        this.update()
+    }
+
+    update()
+    {
+        this.text.setText(this.contents.length)
+    }
+
+    resolveCombat()
+    {
+
     }
 }
 
 class Board
-/*
-TODO: Should map be a separate object?
-*/
 {
     constructor(scene, rows, columns, levelNum)
     {
@@ -214,26 +251,21 @@ TODO: Should map be a separate object?
         this.columns = columns
         this.level = levels[levelNum]
         this.unitIndex = 0
-        console.log(this.level)
-        let x = squareX*columns
-        let y = squareY*rows
         
+        this.computer = new Player(this, 100,30, this.level.players.computer)
+        this.human = new Player(this, 100,730, this.level.players.human)
+
         this.group = scene.physics.add.group()
-        this.container = scene.add.container(100,120)
+        this.container = scene.add.container(100,90)
         this.container.setSize(columns*squareX, rows*squareY)
+        this.mapData = []
         this.createMap()
         this.addStartingUnits()
-
-        //const physicsContainer = scene.matter.add.gameObject(this.container);
-
-        this.computer = new Player(this, 100,60, this.level.players.computer)
-        this.human = new Player(this, 100,700, this.level.players.human)
     }
 
     createMap()
     {
         let i = 0;
-        this.mapData = []
         let mapDef = this.level.map
         for (let r = 0; r < mapDef.length; r++)
         {
@@ -250,16 +282,12 @@ TODO: Should map be a separate object?
 
     updateMap()
     {
+        // Advance all units, handling top and bottom rows as attacking a player
         for (let r of this.mapData)
         {
             for (let square of r)
             {
-                // Pop contents and add them to the appropriate square
-                console.log(square.image)
-                console.log('data '+square.image.data)
-                console.log('values '+square.image.data.values)
-                let contents = square.image.data.values.contents
-                console.log(contents)
+                let contents = square.contents
                 let newContents = []
                 if (contents.length>0) {
                     while (contents.length>0)
@@ -272,8 +300,17 @@ TODO: Should map be a separate object?
                             unit.hp = unit.hp - this.human.attack
                             if (unit.hp<=0)
                             {
-                                // Silently drop dead units
-                                unit.container.setPosition(0,0)
+                                unit.destroy()
+                                continue
+                            }
+                        }
+                        else if (newRow==-1)
+                        {
+                            this.computer.hp = this.computer.hp - unit.attack
+                            unit.hp = unit.hp - this.computer.attack
+                            if (unit.hp<=0)
+                            {
+                                unit.destroy()
                                 continue
                             }
                         }
@@ -287,21 +324,68 @@ TODO: Should map be a separate object?
                         unit.update()
                         newContents.push(unit)
                     }
-                square.image.data.values.contents = newContents
+                square.contents = newContents
                 }
             }
         }
+
+        // Unit combat
+        for (let r of this.mapData)
+        {
+            for (let square of r)
+            {
+                let done = false
+                while (false)
+                {
+                    done = true
+                    // Deal damage
+                    let c = square.contents
+                    if (c.length>1)
+                    {            
+                        console.log("before")        
+                        console.log(square)
+
+                        for (let unit in c)
+                        {
+                            unit.damage(c)
+                        }
+                        console.log("after")        
+                        console.log(square)
+                    }
+                    // Remove dead units
+                    let newContents = []
+                    for (let unit in c)
+                    {
+                        if (unit.hp<=0)
+                        {
+                            unit.destroy()
+                        }
+                        else
+                        {
+                            newContents.push(unit)
+                        }
+                    }
+                    this.contents = newContents
+                    if (newContents.length>1)
+                    {
+                        done = false
+                    }
+                }
+            }
+        }
+
         this.human.hpText.setText('HP '+this.human.hp+' ATK '+this.human.attack+' SHD '+this.human.shield)
+        this.computer.hpText.setText('HP '+this.computer.hp+' ATK '+this.computer.attack+' SHD '+this.computer.shield)
     }
+
     addUnit(typ, c, r, rowChange)
     {
         this.unitIndex++
         const unit = new Unit(this, this.unitIndex, typ, c, r, rowChange)
-        console.log(c+' '+r+' '+rowChange)
-        let data = this.mapData[r][c]
-        console.log(data)
-        data.image.data.values.contents.push(unit)
-}
+        let square = this.mapData[r][c]
+        square.addUnit(unit)
+    }
+
     addStartingUnits() 
     {
         this.unitData = []
@@ -318,13 +402,12 @@ class Play extends Phaser.Scene
 {
     preload ()
     {
-        //this.load.image('buttonBG', 'assets/sprites/button-bg.png');
-        //this.load.image('buttonText', 'assets/sprites/button-text.png');
+        this.load.image('button_charge', 'assets/button_charge.png');
+
         this.load.image('square_empty', 'assets/square_empty.png');
         this.load.image('square_sand', 'assets/square_sand.png');
         this.load.image('unit_wall', 'assets/unit_wall.png');
         this.load.image('unit_soldier', 'assets/unit_soldier.png');
-        this.load.image('button_charge', 'assets/button_charge.png');
     }
 
     timerEvent;
@@ -332,17 +415,12 @@ class Play extends Phaser.Scene
 
     create ()
     {
-        this.state = 'Uninitialized'
-
         timeText = this.add.text(100,0,'time: ', { fontSize: '14px'})
-        this.stateText = this.add.text(100,20,'uninitialized', { fontSize: '14px'})
         board = new Board(this, boardRows, boardColumns,0)
-        items = new Items(this, 0)
-
-        this.stateText.setText('waiting_for_actions')
+        items = new Items(this, 0,100,850)
 
         const chargeButtonImg = this.add.image(0,0,"button_charge")
-        const chargeButton = this.add.container(250,760)
+        const chargeButton = this.add.container(250,790)
         chargeButton.setSize(80,80)
         chargeButton.setInteractive()
         chargeButton.add([chargeButtonImg])
@@ -352,41 +430,28 @@ class Play extends Phaser.Scene
 
         this.physics.add.overlap(board.group, items.group, function(square, item)
         {
-            //console.log('item/board collision')
-            //console.log(item)
             let row = square.getData('row')
             let column = square.getData('column')
             item.setData('newSquare',square)
-            //console.log(row+' '+column)
-            //console.log(item)
         })
 
         this.input.on('drag', function (pointer, gameObject, dragX, dragY) {
             gameObject.x = dragX;
             gameObject.y = dragY;
         })
+        // TODO: Only allow units to be added at bottom row
         this.input.on('dragend', function (pointer, gameObject) {
             console.log('Here '+gameObject)
             console.log(gameObject)
             let values = gameObject.data.values
-            let newSquare = values.newSquare
+            let newSquare = gameObject.getData('obj')
             console.log(typeof newSquare)
             if (typeof newSquare != "undefined")
             {
                 items.remove(gameObject)
                 let item = gameObject.getData('obj')
-                console.log('item')
-                console.log(item)
-                console.log('newSquare')
-                console.log(newSquare)
-                board.addUnit(item.typ, newSquare.getData('column'), newSquare.getData('row'), -1)
+                board.addUnit(item.typ, newSquare.column, boardRows-1, -1)
                 gameObject.destroy()
-                // TODO: 
-                // * create a corresponging unit
-                // * add the unit to the square
-                // * destroy item
-                //newSquare.data.values.contents.push(gameObject)
-                //gameObject.setData('newSquare',undefined)
             }
         })
 
