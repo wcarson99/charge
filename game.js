@@ -79,13 +79,16 @@ class Player
         this.rowChange = defn.rowChange
         this.container = board.scene.add.container(x,y)
         this.hpText = board.scene.add.text(
-            0,0,'HP '+this.hp+' ATK '+this.attack+' SHD '+this.shield, 
-            { fontSize: '28px', fontFamily:'Arial'})
+            0,0,'HP '+('0'+this.hp).slice(-2)
+            +' AT '+('0'+this.attack).slice(-2)
+            +' SH '+('0'+this.shield).slice(-2), 
+            { fontSize: '32px', fontFamily:'Courier'})
+        this.hpText.setOrigin(0.5,0)
         this.container.add(this.hpText)
     }
     update() 
     {
-
+        this.hpText.setText('HP '+this.hp+' ATK '+this.attack+' SHD '+this.shield)
     }
 }
 
@@ -228,7 +231,8 @@ class Square
         board.container.add(this.image)
         board.group.add(this.image) 
 
-        this.text = board.scene.add.text(c*squareX,r*squareY,this.contents.length, { fontSize: '28px'})
+        this.text = board.scene.add.text(c*squareX,r*squareY,this.contents.length, { fontSize: '40px'})
+        this.text.setOrigin(0.5)
         board.container.add(this.text)
     }
 
@@ -291,12 +295,14 @@ class Board
         this.level = levels[levelNum]
         this.unitIndex = 0
         
-        this.computer = new Player(this, 100,30, this.level.players.computer)
-        this.human = new Player(this, 100,730, this.level.players.human)
+        let width = columns*squareX
+        let height = columns*squareY
+        this.computer = new Player(this, 100+width/2,15, this.level.players.computer)
+        this.human = new Player(this, 100+width/2, 730, this.level.players.human)
 
         this.group = scene.physics.add.group()
         this.container = scene.add.container(100,90)
-        this.container.setSize(columns*squareX, rows*squareY)
+        this.container.setSize(width, height)
         this.mapData = []
         this.createMap()
         this.addStartingUnits()
@@ -383,8 +389,8 @@ class Board
             }
         }
 
-        this.human.hpText.setText('HP '+this.human.hp+' ATK '+this.human.attack+' SHD '+this.human.shield)
-        this.computer.hpText.setText('HP '+this.computer.hp+' ATK '+this.computer.attack+' SHD '+this.computer.shield)
+        this.human.update()
+        this.computer.update()
     }
 
     addUnit(typ, c, r, rowChange)
@@ -429,7 +435,7 @@ class Play extends Phaser.Scene
         items = new Items(this, 0,100,850)
 
         const chargeButtonImg = this.add.image(0,0,"button_charge")
-        const chargeButton = this.add.container(250,790)
+        const chargeButton = this.add.container(250,800)
         chargeButton.setSize(80,80)
         chargeButton.setInteractive()
         chargeButton.add([chargeButtonImg])
@@ -437,11 +443,13 @@ class Play extends Phaser.Scene
         chargeButton.on('pointerout', (pointer) => chargeButtonImg.clearTint())
         chargeButton.on('pointerup', (pointer) => board.updateMap())
 
-        this.physics.add.overlap(board.group, items.group, function(square, item)
-        {
-            let row = square.getData('row')
-            let column = square.getData('column')
-            item.setData('newSquare',square)
+        this.physics.add.overlap(board.group, items.group, function(squareImage, itemImage)
+        {   
+            let square = squareImage.getData('obj')
+            //let row = square.row
+            //let column = square.column
+            let item = itemImage.getData('obj')
+            item.newSquare = square
         })
 
         this.input.on('drag', function (pointer, gameObject, dragX, dragY) {
@@ -452,14 +460,14 @@ class Play extends Phaser.Scene
         this.input.on('dragend', function (pointer, gameObject) {
             console.log('Here '+gameObject)
             console.log(gameObject)
-            let values = gameObject.data.values
-            let newSquare = gameObject.getData('obj')
-            console.log(typeof newSquare)
-            if (typeof newSquare != "undefined")
+            let item = gameObject.getData('obj')
+            console.log('item')
+            console.log(item)
+            console.log(typeof item.newSquare)
+            if (typeof item.newSquare != "undefined")
             {
                 items.remove(gameObject)
-                let item = gameObject.getData('obj')
-                board.addUnit(item.typ, newSquare.column, boardRows-1, -1)
+                board.addUnit(item.typ, item.newSquare.column, boardRows-1, -1)
                 gameObject.destroy()
             }
         })
