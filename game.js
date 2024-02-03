@@ -176,13 +176,20 @@ class Unit
     }
     destroy()
     {
+        console.log('Destroying')
+        console.log(this)
         this.container.destroy()
         //this.image.destroy()
     }
     dealDamage(units)
     {
         let numDefenders = units.length
-        let unitDamage = this.attack/numDefenders
+        if (units.length==1)
+        {
+            return
+        }
+
+        let unitDamage = this.attack/(numDefenders-1)
         for (let unit of units)
         {   
             if (unit==this)
@@ -191,15 +198,14 @@ class Unit
                 continue
             }
             let damage = unitDamage
-            if (unit.shield<damage)
+            if (unit.shield>damage)
             {
                 unit.shield -= damage
             }
             else
             {
-                damage -= unit.shield
+                unit.hp = unit.hp+unit.shield-damage
                 unit.shield = 0
-                unit.hp -= shield
             }
         }
     }
@@ -239,8 +245,9 @@ class Square
 
     resolveCombat()
     {
-        while (false) //(this.contents.length>1)
+        while (this.contents.length>1)
         {
+
             // Deal damage
             let c = this.contents
             console.log("before")        
@@ -250,9 +257,6 @@ class Square
             {
                 unit.dealDamage(c)
             }
-            console.log("after")        
-            console.log(this.contents)
-            stop()
 
                 // Remove dead units
             let newContents = []
@@ -268,6 +272,10 @@ class Square
                 }
             }
             this.contents = newContents
+            console.log("after")        
+            console.log(this.contents)
+            //console.log('Breaking')
+            //break
         }
         this.update()
     }
