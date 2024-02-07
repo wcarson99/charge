@@ -5,13 +5,16 @@ For creating sprites - https://www.piskelapp.com/
 For Glitch - https://en.flossmanuals.net/phaser-game-making-in-glitch/_full/
 */
 
-const squareX = 60;
-const squareY = 60;
-const boardRows = 11;
-const boardColumns = 6;
+const screenX = 600
+const screenY = 900
+const squareX = 60
+const squareY = 60
+const boardRows = 11
+const boardColumns = 6
 const boardCenterX = squareX*boardColumns/2
 const boardCenterY = squareY*boardRows/2
-const numItems = 6;
+const boardXOffset = (screenX-squareX*boardColumns)/2
+const numItems = 6
 
 let timeText;
 let board;
@@ -27,6 +30,11 @@ const square_types = {
 const unitDefns = {
     'unit_soldier': {'attack':1, 'hp':10, 'shield':0},
     'unit_shield': {'attack':1, 'hp':10, 'shield':1}
+}
+
+const unitAbbrevs = {
+    's':'unit_soldier',
+    'S':'unit_shield'
 }
 
 const levels = [
@@ -53,10 +61,9 @@ const levels = [
                 attack: 2,
                 shield: 2,
                 units:
-                    [{ c: 0, r: 0, typ: 'unit_soldier' },
-                    { c: 3, r: 0, typ: 'unit_soldier' },
-                    { c: 3, r: 8, typ: 'unit_soldier' }
-                ],
+                    ["ssssss",
+                     "s.s.s."
+                    ],
                 rowChange: 1,
                 color: '#3000f0'
             },
@@ -66,7 +73,7 @@ const levels = [
                 attack: 2,
                 shield: 2,
                 items: [{ typ:'unit_soldier', num:5},
-                        { typ:'unit_shield', num:2}],
+                        { typ:'unit_shield', num:5}],
                 rowChange: -1,
                 color: '#fb0000'
             }
@@ -113,6 +120,7 @@ class Item
         image.setDisplaySize(squareX,squareY)
         image.setSize(squareX,squareY)
         image.setInteractive({ draggable: true})
+        image.setOrigin(0,0)
         items.container.add(image)
         items.group.add(image)
     }
@@ -127,6 +135,11 @@ class Items
 
         this.container = scene.add.container(x,y)
         this.container.setSize(numItems*squareX,squareY)
+        const graphics = scene.add.graphics()
+        graphics.fillStyle(0xFFFFFF,0.5)
+        graphics.fillRect(0, 0,numItems*squareX,squareY)
+        this.container.add(graphics)
+
         this.group = scene.physics.add.group(
             {
             
@@ -189,8 +202,10 @@ class Unit
 
         this.image = owner.scene.add.image(0,0,imageName)
         this.image.setDisplaySize(squareX,squareY)
-        this.statusText = owner.scene.add.text(-24,16,this.statusString(), 
+        this.image.setOrigin(0,0)
+        this.statusText = owner.scene.add.text(5,48,this.statusString(), 
             { fontSize: '10px', fontFamily:'Arial', color:'White'})
+        this.statusText.setOrigin(0,0)
         this.container = owner.scene.add.container(column*squareX, row*squareY, [this.image,this.statusText])
         this.container.setSize(squareX,squareY)
 
@@ -256,12 +271,13 @@ class Square
         this.image = board.scene.add.image(this.x,this.y,type)
         this.image.setDisplaySize(squareX,squareY)
         this.image.setSize(squareX,squareY)
+        this.image.setOrigin(0,0)
         this.image.setData('obj',this)
         board.container.add(this.image)
         board.group.add(this.image) 
 
         this.text = board.scene.add.text(this.x,this.y,this.contents.length, { fontSize: '40px'})
-        this.text.setOrigin(0.5)
+        this.text.setOrigin(0,0)
         board.container.add(this.text)
         // Remove to see the number of units on a square
         this.text.setVisible(false)
@@ -286,21 +302,19 @@ class Square
             return
         }
         //this.board.scene.add.sprite(this.x, this.y, 'combat').play()
-        this.combatSprite = this.board.scene.add.sprite(this.x,this.y,'combat')
-        this.board.container.add(this.combatSprite)
-        this.combatSprite.play('combat_anim')
-        console.log(Phaser)
-        
-        this.combatSprite.on('animationcomplete', function() {
-            this.combatSprite.destroy()
+        let combatSprite = this.board.scene.add.sprite(this.x,this.y,'combat')
+        combatSprite.setOrigin(0,0)
+        combatSprite.play('combat_anim')        
+        combatSprite.on('animationcomplete', function() {
+            combatSprite.destroy()
         }, this)
+        this.board.container.add(combatSprite)
         
         while (this.contents.length>1)
         {
 
             // Deal damage
             let c = this.contents
-            console.log("before")        
             console.log(this.contents)
 
             for (let unit of c)
@@ -308,7 +322,7 @@ class Square
                 unit.dealDamage(c)
             }
 
-                // Remove dead units
+            // Remove dead units
             let newContents = []
             for (let unit of c)
             {
@@ -336,18 +350,19 @@ class Board
         this.columns = columns
         this.level = levels[levelNum]
         this.unitIndex = 0
+        this.turn = 0
         
         let width = columns*squareX
         let height = columns*squareY
-        this.computer = new Player(this, 100+width/2,15, this.level.players.computer)
-        this.human = new Player(this, 100+width/2, 730, this.level.players.human)
+        this.computer = new Player(this, screenX/2,30, this.level.players.computer)
+        this.human = new Player(this, screenX/2, 850, this.level.players.human)
 
         this.group = scene.physics.add.group()
-        this.container = scene.add.container(100,90)
+        this.container = scene.add.container(boardXOffset,60)
         this.container.setSize(width, height)
         this.mapData = []
         this.createMap()
-        this.addStartingUnits()
+        this.addComputerUnits()
     }
 
     createMap()
@@ -430,26 +445,7 @@ class Board
                 square.resolveCombat()
             }
         }
-
-        this.human.update()
-        this.computer.update()
-        if (this.human.hp<=0 || this.computer.hp<=0)
-        {
-            let text = this.scene.add.text(300,400,'', 
-                {fontSize: '80px', align:'center'}).setOrigin(0.5)
-            if (this.human.hp==this.computer.hp)
-            {
-                text.setText("No\nwinner!")
-            }
-            else if (this.human.hp>this.computer.hp)
-            {
-                text.setText("The\nhuman\nwins!")
-            }
-            else
-            {
-                text.setText("The\ncomputer\nwins!")
-            }
-        }
+        this.addComputerUnits()
     }
 
     addUnit(typ, c, r, rowChange)
@@ -460,15 +456,24 @@ class Board
         square.addUnit(unit)
     }
 
-    addStartingUnits() 
+    addComputerUnits() 
     {
         this.unitData = []
         let level = levels[0]
         let units_def = level.players["computer"].units
-        for (let def of units_def)
+        console.log('units_def '+units_def[this.turn])
+        for (let c in units_def[this.turn])
         {
-            this.addUnit(def.typ, def.c, def.r, 1)
+            let abbrev = units_def[this.turn][c]
+            if (abbrev=='.')
+            {
+                continue
+            }
+            let typ = unitAbbrevs[units_def[0][c]]
+            console.log('turn '+this.turn+' '+c+' '+typ)
+            this.addUnit(typ, c, 0, 1)
         } 
+        this.turn +=1
     }
 }
 
@@ -495,7 +500,8 @@ class Play extends Phaser.Scene
         let levelNum = 0
         let levelDefn = levels[levelNum]
         board = new Board(this, boardRows, boardColumns,0)
-        items = new Items(this, 0,100,810, levelDefn['players']['human']['items'])
+        console.log('boardXOffset '+boardXOffset)
+        items = new Items(this, 0,boardXOffset,730, levelDefn['players']['human']['items'])
 
         this.anims.create({
             key: 'combat_anim',
@@ -505,13 +511,13 @@ class Play extends Phaser.Scene
         })
 
         const chargeButtonImg = this.add.image(0,0,"button_charge")
-        const chargeButton = this.add.container(250,870)
+        const chargeButton = this.add.container(screenX/2,830)
         chargeButton.setSize(80,80)
         chargeButton.setInteractive()
         chargeButton.add([chargeButtonImg])
         chargeButton.on('pointerover', (pointer) => chargeButtonImg.setTint(0x808080))
         chargeButton.on('pointerout', (pointer) => chargeButtonImg.clearTint())
-        chargeButton.on('pointerup', (pointer) => board.updateMap())
+        chargeButton.on('pointerup', (pointer) => this.performActions())
 
         this.physics.add.overlap(board.group, items.group, function(squareImage, itemImage)
         {   
@@ -543,6 +549,32 @@ class Play extends Phaser.Scene
         this.timedEvent = this.time.addEvent({ delay: 2000, callback: this.onTimer, callbackScope: this, loop: true });
     }
 
+    performActions()
+    {
+        board.updateMap()
+        let human = board.human
+        let computer = board.computer
+        human.update()
+        computer.update()
+        if (human.hp<=0 || computer.hp<=0)
+        {
+            let text = this.add.text(300,400,'', 
+                {fontSize: '80px', align:'center'}).setOrigin(0.5)
+            if (human.hp==computer.hp)
+            {
+                text.setText("No\nwinner!")
+            }
+            else if (human.hp>computer.hp)
+            {
+                text.setText("The\nhuman\nwins!")
+            }
+            else
+            {
+                text.setText("The\ncomputer\nwins!")
+            }
+        }
+
+    }
     onTimer()
     {
         $.ajax({
