@@ -322,10 +322,6 @@ class Square
                 }
             }
             this.contents = newContents
-            console.log("after")        
-            console.log(this.contents)
-            //console.log('Breaking')
-            //break
         }
         this.update()
     }
@@ -437,6 +433,23 @@ class Board
 
         this.human.update()
         this.computer.update()
+        if (this.human.hp<=0 || this.computer.hp<=0)
+        {
+            let text = this.scene.add.text(300,400,'', 
+                {fontSize: '80px', align:'center'}).setOrigin(0.5)
+            if (this.human.hp==this.computer.hp)
+            {
+                text.setText("No\nwinner!")
+            }
+            else if (this.human.hp>this.computer.hp)
+            {
+                text.setText("The\nhuman\nwins!")
+            }
+            else
+            {
+                text.setText("The\ncomputer\nwins!")
+            }
+        }
     }
 
     addUnit(typ, c, r, rowChange)
@@ -468,8 +481,6 @@ class Play extends Phaser.Scene
             { frameWidth: 60, frameHeight: 60 })
 
         this.load.image('square_empty', 'assets/square_empty.png');
-        this.load.image('square_sand', 'assets/square_sand.png');
-        this.load.image('unit_wall', 'assets/unit_wall.png');
         this.load.image('unit_soldier_up', 'assets/unit_soldier_up.png');
         this.load.image('unit_soldier_down', 'assets/unit_soldier_down.png');
         this.load.image('unit_shield_up', 'assets/unit_shield_up.png');
