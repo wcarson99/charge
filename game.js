@@ -16,6 +16,7 @@ const numItems = 6;
 let timeText;
 let board;
 let items;
+let combatSprite;
 
 const square_types = {
     '.': 'square_empty',
@@ -53,8 +54,9 @@ const levels = [
                 shield: 2,
                 units:
                     [{ c: 0, r: 0, typ: 'unit_soldier' },
-                     { c: 3, r: 0, typ: 'unit_soldier' }
-                    ],
+                    { c: 3, r: 0, typ: 'unit_soldier' },
+                    { c: 3, r: 8, typ: 'unit_soldier' }
+                ],
                 rowChange: 1,
                 color: '#3000f0'
             },
@@ -247,16 +249,18 @@ class Square
         this.index = index;
         this.column = c;
         this.row = r;
+        this.x = c*squareX
+        this.y = r*squareY
         this.contents = [];
         this.nextContents = []
-        this.image = board.scene.add.image(c*squareX,r*squareY,type)
+        this.image = board.scene.add.image(this.x,this.y,type)
         this.image.setDisplaySize(squareX,squareY)
         this.image.setSize(squareX,squareY)
         this.image.setData('obj',this)
         board.container.add(this.image)
         board.group.add(this.image) 
 
-        this.text = board.scene.add.text(c*squareX,r*squareY,this.contents.length, { fontSize: '40px'})
+        this.text = board.scene.add.text(this.x,this.y,this.contents.length, { fontSize: '40px'})
         this.text.setOrigin(0.5)
         board.container.add(this.text)
         // Remove to see the number of units on a square
@@ -277,6 +281,20 @@ class Square
 
     resolveCombat()
     {
+        if (this.contents.length<=1)
+        {
+            return
+        }
+        //this.board.scene.add.sprite(this.x, this.y, 'combat').play()
+        this.combatSprite = this.board.scene.add.sprite(this.x,this.y,'combat')
+        this.board.container.add(this.combatSprite)
+        this.combatSprite.play('combat_anim')
+        console.log(Phaser)
+        
+        this.combatSprite.on('animationcomplete', function() {
+            this.combatSprite.destroy()
+        }, this)
+        
         while (this.contents.length>1)
         {
 
@@ -446,6 +464,8 @@ class Play extends Phaser.Scene
     preload ()
     {
         this.load.image('button_charge', 'assets/button_charge.png');
+        this.load.spritesheet('combat', 'assets/combat.png',
+            { frameWidth: 60, frameHeight: 60 })
 
         this.load.image('square_empty', 'assets/square_empty.png');
         this.load.image('square_sand', 'assets/square_sand.png');
@@ -464,10 +484,17 @@ class Play extends Phaser.Scene
         let levelNum = 0
         let levelDefn = levels[levelNum]
         board = new Board(this, boardRows, boardColumns,0)
-        items = new Items(this, 0,100,850, levelDefn['players']['human']['items'])
+        items = new Items(this, 0,100,810, levelDefn['players']['human']['items'])
+
+        this.anims.create({
+            key: 'combat_anim',
+            frames: 'combat',
+            frameRate: 10,
+            repeat: 2
+        })
 
         const chargeButtonImg = this.add.image(0,0,"button_charge")
-        const chargeButton = this.add.container(250,800)
+        const chargeButton = this.add.container(250,870)
         chargeButton.setSize(80,80)
         chargeButton.setInteractive()
         chargeButton.add([chargeButtonImg])
@@ -552,6 +579,7 @@ const config = {
             //debug: true
         }
     },
+    pixelArt: true,
     scene: Play
 };
 
