@@ -5,6 +5,20 @@ For creating sprites - https://www.piskelapp.com/
 For Glitch - https://en.flossmanuals.net/phaser-game-making-in-glitch/_full/
 */
 
+class CombatAnimation
+{
+    constructor(scene, container, x, y)
+    {
+        const anim = scene.add.sprite(x,y,'combat')
+        anim.setOrigin(0,0)
+        anim.play('combat_anim')        
+        anim.on('animationcomplete', function() {
+            anim.destroy()
+        }, anim)
+        container.add(anim)
+    }
+}
+
 const screenX = 600
 const screenY = 900
 const squareX = 60
@@ -93,11 +107,25 @@ class Player
         this.container = board.scene.add.container(x,y)
         this.hpText = board.scene.add.text(
             0,0,'', 
-            { fontSize: '32px', fontFamily:'Courier', color:defn['color']})
+            { fontSize: '32px', fontFamily:'Verdana', color:defn['color']})
         this.hpText.setOrigin(0.5,0)
         this.container.add(this.hpText)
         this.update()
     }
+
+    takeDamage(attack)
+    {
+        if (this.shield>attack)
+        {
+            this.shield -= attack
+        }
+        else
+        {
+            this.hp = this.hp + this.shield - attack
+            this.shield = 0
+        }
+    }
+
     update() 
     {
         this.hpText.setText('HP '+('0'+this.hp).slice(-2)
@@ -226,32 +254,40 @@ class Unit
         this.container.destroy()
         //this.image.destroy()
     }
+    
+    takeDamage(attack)
+    {
+        if (this.shield>attack)
+        {
+            this.shield -= attack
+        }
+        else
+        {
+            this.hp = this.hp + this.shield - attack
+            this.shield = 0
+        }
+    }
+
     dealDamage(units)
     {
-        let numDefenders = units.length
-        if (units.length==1)
-        {
-            return
-        }
-
-        let unitDamage = this.attack/(numDefenders-1)
+        let numDefenders = units.length-1
+        let unitDamage = this.attack/numDefenders
         for (let unit of units)
         {   
             if (unit==this)
             {
-                console.log('Me')
                 continue
             }
-            let damage = unitDamage
-            if (unit.shield>damage)
-            {
-                unit.shield -= damage
-            }
-            else
-            {
-                unit.hp = unit.hp+unit.shield-damage
-                unit.shield = 0
-            }
+           unit.takeDamage(unitDamage)
+        }
+    }
+
+    fightPlayer(player)
+    {
+        while (this.hp>0 && player.hp>0)
+        {
+            this.takeDamage(player.attack)
+            player.takeDamage(this.attack)
         }
     }
 }
@@ -301,14 +337,8 @@ class Square
         {
             return
         }
-        //this.board.scene.add.sprite(this.x, this.y, 'combat').play()
-        let combatSprite = this.board.scene.add.sprite(this.x,this.y,'combat')
-        combatSprite.setOrigin(0,0)
-        combatSprite.play('combat_anim')        
-        combatSprite.on('animationcomplete', function() {
-            combatSprite.destroy()
-        }, this)
-        this.board.container.add(combatSprite)
+       const combatAnim = new CombatAnimation(
+           this.board.scene, this.board.container, this.x, this.y)
         
         while (this.contents.length>1)
         {
@@ -354,7 +384,7 @@ class Board
         
         let width = columns*squareX
         let height = columns*squareY
-        this.computer = new Player(this, screenX/2,30, this.level.players.computer)
+        this.computer = new Player(this, screenX/2,20, this.level.players.computer)
         this.human = new Player(this, screenX/2, 850, this.level.players.human)
 
         this.group = scene.physics.add.group()
@@ -390,15 +420,13 @@ class Board
             for (let square of r)
             {
                 let contents = square.contents
-                //let newContents = []
                 while (contents.length>0)
                 {
                     let unit = contents.pop()
                     let newRow = unit.row + unit.rowChange
                     if (newRow==boardRows)
                     {
-                        this.human.hp = this.human.hp - unit.attack
-                        unit.hp = unit.hp - this.human.attack
+                        unit.fightPlayer(this.human)
                         if (unit.hp<=0)
                         {
                             unit.destroy()
@@ -407,8 +435,7 @@ class Board
                     }
                     else if (newRow==-1)
                     {
-                        this.computer.hp = this.computer.hp - unit.attack
-                        unit.hp = unit.hp - this.computer.attack
+                        unit.fightPlayer(this.computer)
                         if (unit.hp<=0)
                         {
                             unit.destroy()
@@ -417,10 +444,8 @@ class Board
                     }
                     else
                     {
-                        //console.log(unit)
                         unit.row = newRow
                         unit.container.y += squareY*unit.rowChange
-                        //console.log(unit)
                     }
                     this.mapData[unit.row][unit.column].nextContents.push(unit)
                     unit.update()
@@ -477,6 +502,24 @@ class Board
     }
 }
 
+class TextButton 
+{
+    constructor(scene, x, y, initialText, onClick)
+    {
+        this.scene = scene
+        this.x = x
+        this.y = y
+        this.onClick = onClick
+        const text = scene.add.text(x, y, initialText)
+        this.text = text
+        text.setOrigin(0,0)
+        text.setInteractive()
+        text.on('pointerover', (pointer) => text.setTint(0x808080))
+        text.on('pointerout', (pointer) => text.clearTint())
+        text.on('pointerup', (pointer) => this.onClick())
+    }
+}
+
 class Play extends Phaser.Scene
 {
     preload ()
@@ -496,7 +539,7 @@ class Play extends Phaser.Scene
 
     create ()
     {
-        timeText = this.add.text(100,0,'time: ', { fontSize: '14px'})
+        //timeText = this.add.text(100,0,'time: ', { fontSize: '14px'})
         let levelNum = 0
         let levelDefn = levels[levelNum]
         board = new Board(this, boardRows, boardColumns,0)
@@ -572,6 +615,12 @@ class Play extends Phaser.Scene
             {
                 text.setText("The\ncomputer\nwins!")
             }
+            const restartButton = new TextButton(this, 100, 100,'Restart',
+            function() {
+                console.log(this)
+                this.scene.restart()
+            })
+            //this.scene.restart()
         }
 
     }
@@ -583,7 +632,7 @@ class Play extends Phaser.Scene
             success: function (data) {
                 //console.log(data)
                 let timeStr = data['datetime'].split('T')[1].split('.')[0]
-                timeText.setText('time: ' + timeStr)
+                //timeText.setText('time: ' + timeStr)
             }
         });
         if (false) {
