@@ -228,13 +228,13 @@ class Unit
             imageName += '_up'
         }
 
-        this.image = owner.scene.add.image(0,0,imageName)
-        this.image.setDisplaySize(squareX,squareY)
-        this.image.setOrigin(0,0)
+        this.sprite = owner.scene.add.sprite(0,0,imageName)
+        this.sprite.setDisplaySize(squareX,squareY)
+        this.sprite.setOrigin(0,0)
         this.statusText = owner.scene.add.text(5,48,this.statusString(), 
             { fontSize: '10px', fontFamily:'Arial', color:'White'})
         this.statusText.setOrigin(0,0)
-        this.container = owner.scene.add.container(column*squareX, row*squareY, [this.image,this.statusText])
+        this.container = owner.scene.add.container(column*squareX, row*squareY, [this.sprite,this.statusText])
         this.container.setSize(squareX,squareY)
 
         owner.container.add(this.container)
@@ -289,6 +289,28 @@ class Unit
             this.takeDamage(player.attack)
             player.takeDamage(this.attack)
         }
+    }
+
+    move()
+    {
+        let steps = 5
+        let endY = this.row*squareY
+        let incY = (endY-this.container.y)/steps
+        this.timedEvent = this.owner.scene.time.addEvent(
+            {delay:100, 
+            callback: function() {
+                console.log('endY '+endY+' incY '+incY+' y '+this.container.y)
+                this.container.y+=incY
+                if (this.container.y>=endY)
+                {
+                    this.container.y = endY
+                    this.timedEvent.destroy()
+                }
+            },
+            callbackScope: this,
+            loop:true
+        })
+        //  this.container.y += incY
     }
 }
 
@@ -415,6 +437,7 @@ class Board
     updateMap()
     {
         // Advance all units, handling top and bottom rows as attacking a player
+        let movingUnits = []
         for (let r of this.mapData)
         {
             for (let square of r)
@@ -445,13 +468,18 @@ class Board
                     else
                     {
                         unit.row = newRow
-                        unit.container.y += squareY*unit.rowChange
+                        movingUnits.push(unit)
                     }
                     this.mapData[unit.row][unit.column].nextContents.push(unit)
                     unit.update()
                 }
             }
         }
+        for (let unit of movingUnits)
+        {
+            unit.move()
+        }
+
         // Update square contents
         for (let r of this.mapData)
         {
@@ -486,7 +514,6 @@ class Board
         this.unitData = []
         let level = levels[0]
         let units_def = level.players["computer"].units
-        console.log('units_def '+units_def[this.turn])
         for (let c in units_def[this.turn])
         {
             let abbrev = units_def[this.turn][c]
@@ -504,7 +531,7 @@ class Board
 
 class TextButton 
 {
-    constructor(scene, x, y, initialText, onClick)
+    constructor(scene, x, y, initialText, onClick, context)
     {
         this.scene = scene
         this.x = x
@@ -516,7 +543,23 @@ class TextButton
         text.setInteractive()
         text.on('pointerover', (pointer) => text.setTint(0x808080))
         text.on('pointerout', (pointer) => text.clearTint())
-        text.on('pointerup', (pointer) => this.onClick())
+        text.on('pointerup', (pointer) => onClick(), context)
+    }
+}
+
+class ImageButton
+{
+    constructor(scene, x, y, w, h, image, onPointerUp, context)
+    {
+        const img = scene.add.image(0,0,image)
+        const button = scene.add.container(x,y)
+        this.button = button
+        button.setSize(w,h)
+        button.setInteractive()
+        button.add([img])
+        button.on('pointerover', (pointer) => img.setTint(0x808080))
+        button.on('pointerout', (pointer) => img.clearTint())
+        button.on('pointerup', (pointer) => onPointerUp(), context)
     }
 }
 
@@ -529,9 +572,13 @@ class Play extends Phaser.Scene
             { frameWidth: 60, frameHeight: 60 })
 
         this.load.image('square_empty', 'assets/square_empty.png');
-        this.load.image('unit_soldier_up', 'assets/unit_soldier_up.png');
-        this.load.image('unit_soldier_down', 'assets/unit_soldier_down.png');
-        this.load.image('unit_shield_up', 'assets/unit_shield_up.png');
+        this.load.spritesheet('unit_soldier_up', 'assets/unit_soldier_up.png',
+        { frameWidth: 60, frameHeight: 60 })
+
+        this.load.spritesheet('unit_soldier_down', 'assets/unit_soldier_down.png',
+        { frameWidth: 60, frameHeight: 60 })
+        this.load.spritesheet('unit_shield_up', 'assets/unit_shield_up.png',
+        { frameWidth: 60, frameHeight: 60 })
     }
 
     timerEvent;
@@ -553,14 +600,20 @@ class Play extends Phaser.Scene
             repeat: 2
         })
 
-        const chargeButtonImg = this.add.image(0,0,"button_charge")
-        const chargeButton = this.add.container(screenX/2,830)
-        chargeButton.setSize(80,80)
-        chargeButton.setInteractive()
-        chargeButton.add([chargeButtonImg])
-        chargeButton.on('pointerover', (pointer) => chargeButtonImg.setTint(0x808080))
-        chargeButton.on('pointerout', (pointer) => chargeButtonImg.clearTint())
-        chargeButton.on('pointerup', (pointer) => this.performActions())
+        //const chargeButton = new ImageButton(this, screenX/2,830,80,80,"button_charge", this.performActions, this)
+        //chargeButton.button.on('pointerup', (pointer) => this.performActions())
+        if (true)
+        {
+            const chargeButtonImg = this.add.image(0,0,"button_charge")
+            const chargeButton = this.add.container(screenX/2,830)
+            chargeButton.setSize(80,80)
+            chargeButton.setInteractive()
+            chargeButton.add([chargeButtonImg])
+            chargeButton.on('pointerover', (pointer) => chargeButtonImg.setTint(0x808080))
+            chargeButton.on('pointerout', (pointer) => chargeButtonImg.clearTint())
+            chargeButton.on('pointerup', (pointer) => this.performActions())
+        }
+        
 
         this.physics.add.overlap(board.group, items.group, function(squareImage, itemImage)
         {   
@@ -617,9 +670,10 @@ class Play extends Phaser.Scene
             }
             const restartButton = new TextButton(this, 100, 100,'Restart',
             function() {
+                console.log('restartButton')
                 console.log(this)
-                this.scene.restart()
-            })
+                //scene.restart()
+            }, this)
             //this.scene.restart()
         }
 
@@ -630,7 +684,6 @@ class Play extends Phaser.Scene
             dataType: "json",
             url: "https://worldtimeapi.org/api/timezone/Etc/UTC",
             success: function (data) {
-                //console.log(data)
                 let timeStr = data['datetime'].split('T')[1].split('.')[0]
                 //timeText.setText('time: ' + timeStr)
             }
