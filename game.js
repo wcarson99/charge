@@ -30,10 +30,11 @@ const boardCenterY = squareY*boardRows/2
 const boardXOffset = (screenX-squareX*boardColumns)/2
 const numItems = 6
 
+const moveFrames = 5
+
 let timeText;
 let board;
 let items;
-let combatSprite;
 
 const square_types = {
     '.': 'square_empty',
@@ -115,6 +116,13 @@ class Player
 
     takeDamage(attack)
     {
+        this.hpText.setTint('0x808080')
+        this.board.scene.time.addEvent(
+            { delay: 1000,
+              callback: function() {this.hpText.clearTint()},
+              callbackScope: this,
+            }
+        )
         if (this.shield>attack)
         {
             this.shield -= attack
@@ -168,11 +176,7 @@ class Items
         graphics.fillRect(0, 0,numItems*squareX,squareY)
         this.container.add(graphics)
 
-        this.group = scene.physics.add.group(
-            {
-            
-            }
-        )
+        this.group = scene.physics.add.group()
         this.addItems(defn);
     }
     remove(item)
@@ -227,17 +231,25 @@ class Unit
         {
             imageName += '_up'
         }
-
-        this.sprite = owner.scene.add.sprite(0,0,imageName)
-        this.sprite.setDisplaySize(squareX,squareY)
-        this.sprite.setOrigin(0,0)
+        console.log(this)
+        
+        this.sprite = (owner.scene.add.sprite(0,0,imageName)
+            .setOrigin(0,0)
+            .setDisplaySize(squareX,squareY)
+        )
+        //this.sprite.play(imageName+'_anim')
         this.statusText = owner.scene.add.text(5,48,this.statusString(), 
             { fontSize: '10px', fontFamily:'Arial', color:'White'})
         this.statusText.setOrigin(0,0)
-        this.container = owner.scene.add.container(column*squareX, row*squareY, [this.sprite,this.statusText])
+        this.container = owner.scene.add.container(
+            column*squareX, row*squareY, 
+            [this.sprite,this.statusText])
         this.container.setSize(squareX,squareY)
 
         owner.container.add(this.container)
+        //const c = new CombatAnimation(owner.scene,this.container, 100, 100+row*10)
+        //t.play('unit_soldier_down_anim',true)
+
     }
     statusString()
     {
@@ -249,10 +261,7 @@ class Unit
     }
     destroy()
     {
-        console.log('Destroying')
-        console.log(this)
         this.container.destroy()
-        //this.image.destroy()
     }
     
     takeDamage(attack)
@@ -266,6 +275,7 @@ class Unit
             this.hp = this.hp + this.shield - attack
             this.shield = 0
         }
+        this.update()
     }
 
     dealDamage(units)
@@ -289,28 +299,6 @@ class Unit
             this.takeDamage(player.attack)
             player.takeDamage(this.attack)
         }
-    }
-
-    move()
-    {
-        let steps = 5
-        let endY = this.row*squareY
-        let incY = (endY-this.container.y)/steps
-        this.timedEvent = this.owner.scene.time.addEvent(
-            {delay:100, 
-            callback: function() {
-                console.log('endY '+endY+' incY '+incY+' y '+this.container.y)
-                this.container.y+=incY
-                if (this.container.y>=endY)
-                {
-                    this.container.y = endY
-                    this.timedEvent.destroy()
-                }
-            },
-            callbackScope: this,
-            loop:true
-        })
-        //  this.container.y += incY
     }
 }
 
@@ -436,6 +424,9 @@ class Board
 
     updateMap()
     {
+        console.log(this.scene.chargeButton)
+        this.scene.chargeButton.setActive(false)
+        this.scene.chargeButton.setVisible(false)
         // Advance all units, handling top and bottom rows as attacking a player
         let movingUnits = []
         for (let r of this.mapData)
@@ -475,10 +466,18 @@ class Board
                 }
             }
         }
-        for (let unit of movingUnits)
-        {
-            unit.move()
-        }
+        this.timedEvent = this.scene.time.addEvent(
+            {
+                delay: 100,
+                repeat: moveFrames-1,
+                callback: function () {
+                    for (let unit of movingUnits) {
+                        //unit.sprite.play(unit.typ)
+                        unit.container.y += unit.rowChange * squareY / moveFrames
+                    }
+                },
+                callbackScope: this,
+            })
 
         // Update square contents
         for (let r of this.mapData)
@@ -499,6 +498,10 @@ class Board
             }
         }
         this.addComputerUnits()
+
+        this.scene.chargeButton.setActive(true)
+        this.scene.chargeButton.setVisible(true)
+
     }
 
     addUnit(typ, c, r, rowChange)
@@ -563,22 +566,22 @@ class ImageButton
     }
 }
 
+const animConfig = { frameWidth: 60, frameHeight: 60 }
 class Play extends Phaser.Scene
 {
     preload ()
     {
         this.load.image('button_charge', 'assets/button_charge.png');
-        this.load.spritesheet('combat', 'assets/combat.png',
-            { frameWidth: 60, frameHeight: 60 })
+        this.load.spritesheet('combat', 'assets/combat.png',animConfig)
 
         this.load.image('square_empty', 'assets/square_empty.png');
         this.load.spritesheet('unit_soldier_up', 'assets/unit_soldier_up.png',
-        { frameWidth: 60, frameHeight: 60 })
+            animConfig)
 
         this.load.spritesheet('unit_soldier_down', 'assets/unit_soldier_down.png',
-        { frameWidth: 60, frameHeight: 60 })
+            { frameWidth: 30, frameHeight: 30 })
         this.load.spritesheet('unit_shield_up', 'assets/unit_shield_up.png',
-        { frameWidth: 60, frameHeight: 60 })
+            { frameWidth: 60, frameHeight: 60 })
     }
 
     timerEvent;
@@ -599,22 +602,46 @@ class Play extends Phaser.Scene
             frameRate: 10,
             repeat: 2
         })
+        this.anims.create({
+            key:'unit_soldier_down_anim',
+            frames: 'unit_soldier_down',
+            frameRate: 5,
+            repeat: -1
 
-        //const chargeButton = new ImageButton(this, screenX/2,830,80,80,"button_charge", this.performActions, this)
+        })
+        this.anims.create({
+            key:'unit_soldier_up_anim',
+            frames: 'unit_soldier_up',
+            frameRate: 5,
+            repeat: 2
+
+        })
+        this.anims.create({
+            key:'unit_shield_up_anim',
+            frames: 'unit_shield_up',
+            frameRate: 5,
+            repeat: 2
+
+        })
+
+        //const t = this.add.sprite(100,100).play('unit_soldier_down_anim')
+        //const t2 = this.add.sprite(100,150,'unit_soldier_down').play('unit_soldier_down_anim')
+        //t.setSize(60,60)
+        //this.chargeButton = new ImageButton(this, screenX/2,830,80,80,"button_charge", this.performActions, this)
         //chargeButton.button.on('pointerup', (pointer) => this.performActions())
         if (true)
         {
             const chargeButtonImg = this.add.image(0,0,"button_charge")
-            const chargeButton = this.add.container(screenX/2,830)
-            chargeButton.setSize(80,80)
-            chargeButton.setInteractive()
-            chargeButton.add([chargeButtonImg])
-            chargeButton.on('pointerover', (pointer) => chargeButtonImg.setTint(0x808080))
-            chargeButton.on('pointerout', (pointer) => chargeButtonImg.clearTint())
-            chargeButton.on('pointerup', (pointer) => this.performActions())
+            this.chargeButton = (
+                this.add.container(screenX/2,830, [chargeButtonImg])
+                .setSize(80,80)
+                .setInteractive()
+                .on('pointerover', (pointer) => chargeButtonImg.setTint(0x808080))
+                .on('pointerout', (pointer) => chargeButtonImg.clearTint())
+                .on('pointerup', (pointer) => this.performActions())
+            )
         }
         
-
         this.physics.add.overlap(board.group, items.group, function(squareImage, itemImage)
         {   
             let square = squareImage.getData('obj')
@@ -623,13 +650,11 @@ class Play extends Phaser.Scene
         })
 
         this.input.on('drag', function (pointer, gameObject, dragX, dragY) {
-            gameObject.x = dragX;
-            gameObject.y = dragY;
+            gameObject.x = dragX
+            gameObject.y = dragY
         })
 
         this.input.on('dragend', function (pointer, gameObject) {
-            console.log('Here '+gameObject)
-            console.log(gameObject)
             let item = gameObject.getData('obj')
             console.log('item')
             console.log(item)
@@ -647,6 +672,8 @@ class Play extends Phaser.Scene
 
     performActions()
     {
+        console.log('this ')
+        console.log(this)
         board.updateMap()
         let human = board.human
         let computer = board.computer
