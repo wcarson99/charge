@@ -31,10 +31,13 @@ const boardXOffset = (screenX-squareX*boardColumns)/2
 const numItems = 6
 
 const moveFrames = 5
+buttonFontFamily = "Verdana"
 
 let timeText;
 let board;
 let items;
+let chargeButton;
+let restartButton;
 
 const square_types = {
     '.': 'square_empty',
@@ -424,9 +427,6 @@ class Board
 
     updateMap()
     {
-        console.log(this.scene.chargeButton)
-        this.scene.chargeButton.setActive(false)
-        this.scene.chargeButton.setVisible(false)
         // Advance all units, handling top and bottom rows as attacking a player
         let movingUnits = []
         for (let r of this.mapData)
@@ -498,10 +498,6 @@ class Board
             }
         }
         this.addComputerUnits()
-
-        this.scene.chargeButton.setActive(true)
-        this.scene.chargeButton.setVisible(true)
-
     }
 
     addUnit(typ, c, r, rowChange)
@@ -532,22 +528,37 @@ class Board
     }
 }
 
-class TextButton 
+class TextButton extends Phaser.GameObjects.Container
 {
-    constructor(scene, x, y, initialText, onClick, context)
-    {
+    constructor(scene, x, y, key, text, fontColor = '#000') {
+        super(scene)
         this.scene = scene
         this.x = x
         this.y = y
-        this.onClick = onClick
-        const text = scene.add.text(x, y, initialText)
-        this.text = text
-        text.setOrigin(0,0)
-        text.setInteractive()
-        text.on('pointerover', (pointer) => text.setTint(0x808080))
-        text.on('pointerout', (pointer) => text.clearTint())
-        text.on('pointerup', (pointer) => onClick(), context)
-    }
+        console.log('k1')
+        const button = this.scene.add.image(0, 0,
+            key).setInteractive();
+        const buttonText = this.scene.add.text(0, 0, text, { fontSize:
+          '28px', color: fontColor , fontFamily:buttonFontFamily});
+        button.setDisplaySize(buttonText.width,30)
+        //this.setSize(buttonText.width,30)
+            
+        Phaser.Display.Align.In.Center(buttonText, button);
+        this.add(button);
+        this.add(buttonText);
+        console.log(this)
+        button.on('pointerover', (pointer) => button.setTint(0x808080))
+        button.on('pointerout', (pointer) => button.clearTint())
+        button.on('pointerdown', (pointer) => button.setTint(0xc08080))
+        
+        button.on('pointerup', () => {
+          console.log('ddd')
+        });
+        this.button = button
+        
+        console.log(this)
+        this.scene.add.existing(this);
+      }
 }
 
 class ImageButton
@@ -572,6 +583,8 @@ class Play extends Phaser.Scene
     preload ()
     {
         this.load.image('button_charge', 'assets/button_charge.png');
+        this.load.image('black','assets/black.png')
+        this.load.image('white','assets/white.png')
         this.load.spritesheet('combat', 'assets/combat.png',animConfig)
 
         this.load.image('square_empty', 'assets/square_empty.png');
@@ -632,7 +645,7 @@ class Play extends Phaser.Scene
         if (true)
         {
             const chargeButtonImg = this.add.image(0,0,"button_charge")
-            this.chargeButton = (
+            chargeButton = (
                 this.add.container(screenX/2,830, [chargeButtonImg])
                 .setSize(80,80)
                 .setInteractive()
@@ -641,6 +654,13 @@ class Play extends Phaser.Scene
                 .on('pointerup', (pointer) => this.performActions())
             )
         }
+
+        
+
+        restartButton = new TextButton(this, screenX/2, 830, 'white', 'RESTART')
+        restartButton.button.on('pointerup', (pointer) => this.restart())
+        restartButton.setVisible(false)
+
         
         this.physics.add.overlap(board.group, items.group, function(squareImage, itemImage)
         {   
@@ -668,12 +688,20 @@ class Play extends Phaser.Scene
         })
 
         this.timedEvent = this.time.addEvent({ delay: 2000, callback: this.onTimer, callbackScope: this, loop: true });
+    
+        //console.log(game)
     }
 
+    restart()
+    {
+        console.log('Restarting')
+        this.scene.restart()
+    }
     performActions()
     {
         console.log('this ')
         console.log(this)
+        chargeButton.setVisible(false)
         board.updateMap()
         let human = board.human
         let computer = board.computer
@@ -695,13 +723,11 @@ class Play extends Phaser.Scene
             {
                 text.setText("The\ncomputer\nwins!")
             }
-            const restartButton = new TextButton(this, 100, 100,'Restart',
-            function() {
-                console.log('restartButton')
-                console.log(this)
-                //scene.restart()
-            }, this)
-            //this.scene.restart()
+            restartButton.setVisible(true)
+        }
+        else
+        {
+            chargeButton.setVisible(true)
         }
 
     }
