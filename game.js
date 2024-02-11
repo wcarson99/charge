@@ -147,39 +147,40 @@ class Player
 
 class Item
 {   
-    constructor(items, index, typ, column)
+    constructor(items, typ)
     {
         this.items = items
-        this.index = index
         this.typ = typ
-        this.column = column;
-        let image = this.items.scene.add.image(column*squareX,0,typ+'_up')
+        let image = this.items.scene.add.image(0,0,typ+'_up')
+        this.image = image
         image.setData('obj', this)
         image.setData('newSquare',undefined)
         image.setDisplaySize(squareX,squareY)
         image.setSize(squareX,squareY)
         image.setInteractive({ draggable: true})
         image.setOrigin(0,0)
-        items.container.add(image)
         items.group.add(image)
     }
 }
 
-class Items
+class Items extends Phaser.GameObjects.Container
 {
-    constructor(scene, levelNum, x, y, defn)
+    constructor(scene, x, y, defn)
     {
+        super(scene)
         this.scene = scene
-        this.level = levels[levelNum]
+        this.x = x
+        this.y = y
 
-        this.container = scene.add.container(x,y)
-        this.container.setSize(numItems*squareX,squareY)
-        const graphics = scene.add.graphics()
-        graphics.fillStyle(0xFFFFFF,0.5)
-        graphics.fillRect(0, 0,numItems*squareX,squareY)
-        this.container.add(graphics)
+        //this.setSize(numItems*squareX,squareY)
+        const image = scene.add.image(0,0,'white')
+        image.setDisplaySize(numItems*squareX,squareY)
+        image.setOrigin(0,0)
+        image.setTint(0x008000)
+        this.add(image) 
 
         this.group = scene.physics.add.group()
+        this.scene.add.existing(this)
         this.addItems(defn);
     }
     remove(item)
@@ -192,20 +193,35 @@ class Items
         console.log(defn)
         let c = 0;
         this.itemData = []
+        this.remaining = []
         for (let itemDefn of defn)
         {
             let typ = itemDefn['typ']
             let num = itemDefn['num']
             for (let i=0; i<num; i++)
-            {
-                this.itemData[c] = new Item(this, c, typ,c,-1)
-                c++
-                if (c>=6)
-                {
-                    break
-                }    
+            { 
+                let item = new Item(this, typ)
+                item.image.setVisible(false)
+                this.remaining.push(item)
             }
         }
+        console.log('asdf')
+        console.log(this)
+        
+        
+        for (let i=0;i<numItems;i++)
+        {
+            console.log(i)
+            let item = this.remaining.pop()
+            console.log(item)
+            item.image.x = i*squareX
+            item.image.y = 0
+            item.image.setVisible(true)
+            this.add(item.image)
+            //this.group.add(item)
+        }
+        
+        
     }
 }
 
@@ -528,53 +544,32 @@ class Board
     }
 }
 
-class TextButton extends Phaser.GameObjects.Container
+class Button extends Phaser.GameObjects.Container
 {
     constructor(scene, x, y, key, text, fontColor = '#000') {
         super(scene)
         this.scene = scene
         this.x = x
         this.y = y
-        console.log('k1')
-        const button = this.scene.add.image(0, 0,
-            key).setInteractive();
-        const buttonText = this.scene.add.text(0, 0, text, { fontSize:
-          '28px', color: fontColor , fontFamily:buttonFontFamily});
+
+        const button = this.scene.add.image(0, 0, key).setInteractive()
+        const buttonText = this.scene.add.text(0, 0, text, 
+            { fontSize: '28px', color: fontColor , fontFamily:buttonFontFamily})
         button.setDisplaySize(buttonText.width,30)
-        //this.setSize(buttonText.width,30)
             
         Phaser.Display.Align.In.Center(buttonText, button);
         this.add(button);
         this.add(buttonText);
-        console.log(this)
         button.on('pointerover', (pointer) => button.setTint(0x808080))
         button.on('pointerout', (pointer) => button.clearTint())
         button.on('pointerdown', (pointer) => button.setTint(0xc08080))
         
         button.on('pointerup', () => {
-          console.log('ddd')
+          console.log('No pointerup handler implemented')
         });
         this.button = button
-        
-        console.log(this)
         this.scene.add.existing(this);
       }
-}
-
-class ImageButton
-{
-    constructor(scene, x, y, w, h, image, onPointerUp, context)
-    {
-        const img = scene.add.image(0,0,image)
-        const button = scene.add.container(x,y)
-        this.button = button
-        button.setSize(w,h)
-        button.setInteractive()
-        button.add([img])
-        button.on('pointerover', (pointer) => img.setTint(0x808080))
-        button.on('pointerout', (pointer) => img.clearTint())
-        button.on('pointerup', (pointer) => onPointerUp(), context)
-    }
 }
 
 const animConfig = { frameWidth: 60, frameHeight: 60 }
@@ -607,7 +602,7 @@ class Play extends Phaser.Scene
         let levelDefn = levels[levelNum]
         board = new Board(this, boardRows, boardColumns,0)
         console.log('boardXOffset '+boardXOffset)
-        items = new Items(this, 0,boardXOffset,730, levelDefn['players']['human']['items'])
+        items = new Items(this, boardXOffset,730, levelDefn['players']['human']['items'])
 
         this.anims.create({
             key: 'combat_anim',
@@ -637,11 +632,6 @@ class Play extends Phaser.Scene
 
         })
 
-        //const t = this.add.sprite(100,100).play('unit_soldier_down_anim')
-        //const t2 = this.add.sprite(100,150,'unit_soldier_down').play('unit_soldier_down_anim')
-        //t.setSize(60,60)
-        //this.chargeButton = new ImageButton(this, screenX/2,830,80,80,"button_charge", this.performActions, this)
-        //chargeButton.button.on('pointerup', (pointer) => this.performActions())
         if (true)
         {
             const chargeButtonImg = this.add.image(0,0,"button_charge")
@@ -655,13 +645,10 @@ class Play extends Phaser.Scene
             )
         }
 
-        
-
-        restartButton = new TextButton(this, screenX/2, 830, 'white', 'RESTART')
+        restartButton = new Button(this, screenX/2, 830, 'white', 'RESTART')
         restartButton.button.on('pointerup', (pointer) => this.restart())
         restartButton.setVisible(false)
 
-        
         this.physics.add.overlap(board.group, items.group, function(squareImage, itemImage)
         {   
             let square = squareImage.getData('obj')
