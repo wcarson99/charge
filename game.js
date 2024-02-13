@@ -31,7 +31,7 @@ const boardXOffset = (screenX-squareX*boardColumns)/2
 const numItems = 6
 
 const moveFrames = 5
-buttonFontFamily = "Verdana"
+buttonFontFamily = "Arial" //"Verdana"
 
 let timeText;
 let board;
@@ -213,12 +213,12 @@ class Items extends Phaser.GameObjects.Container
     {        
         let gameObjects = this.getAll()
         for (let item of gameObjects.slice(1,gameObjects.length))
-        {   console.log(item)
+        {   
             items.remove(item)
             item.setVisible(false)
             this.remaining.push(item)
         }
-        //this.removeAll()
+
         let i = 0
         while (this.remaining.length>0)
         {
@@ -238,10 +238,12 @@ class Items extends Phaser.GameObjects.Container
     }
 }
 
-class Unit
+class Unit extends Phaser.GameObjects.Container
 {
-    constructor(owner, index, typ, column, row, rowChange)
+    constructor(scene, owner, index, typ, column, row, rowChange)
     {
+        super(scene)
+
         this.owner = owner
         this.index = index
         this.typ = typ
@@ -254,6 +256,10 @@ class Unit
         this.hp = this.defn.hp
         this.shield = this.defn.shield
 
+        this.x = column*squareX
+        this.y = row*squareY
+        this.setSize(squareX, squareY)
+
         let imageName = typ
         if (rowChange>0)
         {
@@ -265,37 +271,27 @@ class Unit
         }
         console.log(this)
         
-        this.sprite = (owner.scene.add.sprite(0,0,imageName)
+        this.sprite = (scene.add.sprite(0,0,imageName)
             .setOrigin(0,0)
             .setDisplaySize(squareX,squareY)
         )
         //this.sprite.play(imageName+'_anim')
-        this.statusText = owner.scene.add.text(5,48,this.statusString(), 
-            { fontSize: '10px', fontFamily:'Arial', color:'White'})
+        this.statusText = scene.add.text(5,48, this.statusString(), 
+            { fontSize: '10px', fontFamily:buttonFontFamily, color:'White'})
         this.statusText.setOrigin(0,0)
-        this.container = owner.scene.add.container(
-            column*squareX, row*squareY, 
-            [this.sprite,this.statusText])
-        this.container.setSize(squareX,squareY)
-
-        owner.container.add(this.container)
-        //const c = new CombatAnimation(owner.scene,this.container, 100, 100+row*10)
-        //t.play('unit_soldier_down_anim',true)
-
+       this.add([this.sprite, this.statusText])
     }
+
     statusString()
     {
         return 'A'+this.attack+' S'+this.shield+' H'+this.hp
     }
+
     update()
     {
         this.statusText.setText(this.statusString())
     }
-    destroy()
-    {
-        this.container.destroy()
-    }
-    
+
     takeDamage(attack)
     {
         if (this.shield>attack)
@@ -502,7 +498,7 @@ class Board
                 callback: function () {
                     for (let unit of movingUnits) {
                         //unit.sprite.play(unit.typ)
-                        unit.container.y += unit.rowChange * squareY / moveFrames
+                        unit.y += unit.rowChange * squareY / moveFrames
                     }
                 },
                 callbackScope: this,
@@ -532,7 +528,8 @@ class Board
     addUnit(typ, c, r, rowChange)
     {
         this.unitIndex++
-        const unit = new Unit(this, this.unitIndex, typ, c, r, rowChange)
+        const unit = new Unit(this.scene, this, this.unitIndex, typ, c, r, rowChange)
+        this.container.add(unit)
         let square = this.mapData[r][c]
         square.addUnit(unit)
     }
