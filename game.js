@@ -145,21 +145,25 @@ class Player
     }
 }
 
-class Item
+class Item extends Phaser.GameObjects.Image
 {   
-    constructor(items, typ)
+    constructor(scene, index, items, typ)
     {
+        super(scene,0,0,typ+'_up')
+        this.scene = scene
+        this.index = index
         this.items = items
         this.typ = typ
-        let image = this.items.scene.add.image(0,0,typ+'_up')
-        this.image = image
-        image.setData('obj', this)
-        image.setData('newSquare',undefined)
-        image.setDisplaySize(squareX,squareY)
-        image.setSize(squareX,squareY)
-        image.setInteractive({ draggable: true})
-        image.setOrigin(0,0)
-        items.group.add(image)
+        
+        this.setData('obj', this)
+        this.setData('newSquare',undefined)
+        this.setDisplaySize(squareX,squareY)
+        this.setSize(squareX,squareY)
+        this.setInteractive({ draggable: true})
+        this.setOrigin(0,0)
+
+        items.group.add(this)
+        this.scene.add.existing(this)
     }
 }
 
@@ -172,7 +176,6 @@ class Items extends Phaser.GameObjects.Container
         this.x = x
         this.y = y
 
-        //this.setSize(numItems*squareX,squareY)
         const image = scene.add.image(0,0,'white')
         image.setDisplaySize(numItems*squareX,squareY)
         image.setOrigin(0,0)
@@ -181,47 +184,57 @@ class Items extends Phaser.GameObjects.Container
 
         this.group = scene.physics.add.group()
         this.scene.add.existing(this)
-        this.addItems(defn);
-    }
-    remove(item)
-    {
-        this.group.remove(item)
+
+        //this.available = []
+        this.remaining = []
+        this.createItems(defn);
     }
 
-    addItems(defn)
+    createItems(defn)
     {   
         console.log(defn)
-        let c = 0;
-        this.itemData = []
-        this.remaining = []
+        let ind = 0
         for (let itemDefn of defn)
         {
             let typ = itemDefn['typ']
             let num = itemDefn['num']
             for (let i=0; i<num; i++)
             { 
-                let item = new Item(this, typ)
-                item.image.setVisible(false)
+                let item = new Item(this.scene, ind, this, typ)
+                item.setVisible(false)
                 this.remaining.push(item)
+                ind += 1
             }
         }
-        console.log('asdf')
-        console.log(this)
-        
-        
-        for (let i=0;i<numItems;i++)
+        this.fill()
+    }
+
+    fill()
+    {        
+        let gameObjects = this.getAll()
+        for (let item of gameObjects.slice(1,gameObjects.length))
+        {   console.log(item)
+            items.remove(item)
+            item.setVisible(false)
+            this.remaining.push(item)
+        }
+        //this.removeAll()
+        let i = 0
+        while (this.remaining.length>0)
         {
             console.log(i)
-            let item = this.remaining.pop()
+            let item = this.remaining.shift()
             console.log(item)
-            item.image.x = i*squareX
-            item.image.y = 0
-            item.image.setVisible(true)
-            this.add(item.image)
-            //this.group.add(item)
+            item.x = i*squareX
+            item.y = 0
+            item.setVisible(true)
+            this.add(item)
+            i++
+            if (i==numItems)
+            {
+                break
+            }
         }
-        
-        
     }
 }
 
@@ -649,10 +662,9 @@ class Play extends Phaser.Scene
         restartButton.button.on('pointerup', (pointer) => this.restart())
         restartButton.setVisible(false)
 
-        this.physics.add.overlap(board.group, items.group, function(squareImage, itemImage)
+        this.physics.add.overlap(board.group, items.group, function(squareImage, item)
         {   
             let square = squareImage.getData('obj')
-            let item = itemImage.getData('obj')
             item.newSquare = square
         })
 
@@ -661,16 +673,17 @@ class Play extends Phaser.Scene
             gameObject.y = dragY
         })
 
-        this.input.on('dragend', function (pointer, gameObject) {
-            let item = gameObject.getData('obj')
+        this.input.on('dragend', function (pointer, item) {
+            //let item = gameObject
             console.log('item')
             console.log(item)
             console.log(typeof item.newSquare)
             if (typeof item.newSquare != "undefined")
             {
-                items.remove(gameObject)
+                item.setVisible(false)
+                items.remove(item)
                 board.addUnit(item.typ, item.newSquare.column, boardRows-1, -1)
-                gameObject.destroy()
+                item.destroy()
             }
         })
 
@@ -690,6 +703,8 @@ class Play extends Phaser.Scene
         console.log(this)
         chargeButton.setVisible(false)
         board.updateMap()
+        items.fill()
+
         let human = board.human
         let computer = board.computer
         human.update()
