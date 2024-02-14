@@ -5,17 +5,19 @@ For creating sprites - https://www.piskelapp.com/
 For Glitch - https://en.flossmanuals.net/phaser-game-making-in-glitch/_full/
 */
 
-class CombatAnimation
+class CombatAnimation extends Phaser.GameObjects.Sprite
 {
     constructor(scene, container, x, y)
     {
-        const anim = scene.add.sprite(x,y,'combat')
-        anim.setOrigin(0,0)
-        anim.play('combat_anim')        
-        anim.on('animationcomplete', function() {
-            anim.destroy()
-        }, anim)
-        container.add(anim)
+        super(scene,x,y,'combat')
+
+        this.setOrigin(0,0)
+        this.play('combat_anim')        
+        this.on('animationcomplete', function() {
+            this.destroy()
+        }, this)
+        scene.add.existing(this)
+        container.add(this)
     }
 }
 
@@ -90,8 +92,8 @@ const levels = [
                 hp:10,
                 attack: 2,
                 shield: 2,
-                items: [{ typ:'unit_soldier', num:5},
-                        { typ:'unit_shield', num:5}],
+                items: [{ typ:'unit_soldier', num:8},
+                        { typ:'unit_shield', num:3}],
                 rowChange: -1,
                 color: '#fb0000'
             }
@@ -330,17 +332,19 @@ class Unit extends Phaser.GameObjects.Container
     }
 }
 
-class Square
+class Square //extends Phaser.GameObjects.Container
 {
     constructor(board, index, type, c, r)
     {
+        //super(board.scene)
+
         this.board = board;
         this.index = index;
         this.column = c;
         this.row = r;
         this.x = c*squareX
         this.y = r*squareY
-        this.contents = [];
+        this.contents = []
         this.nextContents = []
         this.image = board.scene.add.image(this.x,this.y,type)
         this.image.setDisplaySize(squareX,squareY)
@@ -349,24 +353,11 @@ class Square
         this.image.setData('obj',this)
         board.container.add(this.image)
         board.group.add(this.image) 
-
-        this.text = board.scene.add.text(this.x,this.y,this.contents.length, { fontSize: '40px'})
-        this.text.setOrigin(0,0)
-        board.container.add(this.text)
-        // Remove to see the number of units on a square
-        this.text.setVisible(false)
-
     }
 
     addUnit(unit)
     {
         this.contents.push(unit)
-        this.update()
-    }
-
-    update()
-    {
-        this.text.setText(this.contents.length)
     }
 
     resolveCombat()
@@ -405,7 +396,6 @@ class Square
             }
             this.contents = newContents
         }
-        this.update()
     }
 }
 
