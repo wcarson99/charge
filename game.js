@@ -30,6 +30,7 @@ const boardColumns = 6
 const boardCenterX = squareX*boardColumns/2
 const boardCenterY = squareY*boardRows/2
 const boardXOffset = (screenX-squareX*boardColumns)/2
+const boardYOffset = 60
 const numItems = 6
 
 const moveFrames = 5
@@ -40,6 +41,8 @@ let board;
 let items;
 let chargeButton;
 let restartButton;
+let human;
+let computer;
 
 const square_types = {
     '.': 'square_empty',
@@ -332,11 +335,11 @@ class Unit extends Phaser.GameObjects.Container
     }
 }
 
-class Square //extends Phaser.GameObjects.Container
+class Square extends Phaser.GameObjects.Image
 {
     constructor(board, index, type, c, r)
     {
-        //super(board.scene)
+        super(board.scene,c*squareX,r*squareY,type)
 
         this.board = board;
         this.index = index;
@@ -346,13 +349,17 @@ class Square //extends Phaser.GameObjects.Container
         this.y = r*squareY
         this.contents = []
         this.nextContents = []
-        this.image = board.scene.add.image(this.x,this.y,type)
-        this.image.setDisplaySize(squareX,squareY)
-        this.image.setSize(squareX,squareY)
-        this.image.setOrigin(0,0)
-        this.image.setData('obj',this)
-        board.container.add(this.image)
-        board.group.add(this.image) 
+        this.setDisplaySize(squareX,squareY)
+        this.setSize(squareX,squareY)
+        this.setOrigin(0,0)
+        this.setData('obj',this)
+        this.on('pointerover', (pointer) => this.setTint(0x808080), this)
+        this.on('pointerout', (pointer) => this.clearTint(), this)
+        
+        this.scene.add.existing(this);
+
+        board.add(this)
+        board.group.add(this) 
     }
 
     addUnit(unit)
@@ -367,7 +374,7 @@ class Square //extends Phaser.GameObjects.Container
             return
         }
        const combatAnim = new CombatAnimation(
-           this.board.scene, this.board.container, this.x, this.y)
+           this.board.scene, this.board, this.x, this.y)
         
         while (this.contents.length>1)
         {
@@ -399,10 +406,12 @@ class Square //extends Phaser.GameObjects.Container
     }
 }
 
-class Board
+class Board extends Phaser.GameObjects.Container
 {
     constructor(scene, rows, columns, levelNum)
     {
+        super(scene,boardXOffset, boardYOffset)
+
         this.scene = scene;
         this.rows = rows;
         this.columns = columns
@@ -410,17 +419,18 @@ class Board
         this.unitIndex = 0
         this.turn = 0
         
-        let width = columns*squareX
-        let height = columns*squareY
         this.computer = new Player(this, screenX/2,20, this.level.players.computer)
         this.human = new Player(this, screenX/2, 850, this.level.players.human)
 
         this.group = scene.physics.add.group()
-        this.container = scene.add.container(boardXOffset,60)
-        this.container.setSize(width, height)
+        let width = columns*squareX
+        let height = columns*squareY
+        this.setSize(width, height)
         this.mapData = []
         this.createMap()
         this.addComputerUnits()
+
+        this.scene.add.existing(this)
     }
 
     createMap()
@@ -519,7 +529,7 @@ class Board
     {
         this.unitIndex++
         const unit = new Unit(this.scene, this, this.unitIndex, typ, c, r, rowChange)
-        this.container.add(unit)
+        this.add(unit)
         let square = this.mapData[r][c]
         square.addUnit(unit)
     }
@@ -568,7 +578,7 @@ class Button extends Phaser.GameObjects.Container
           console.log('No pointerup handler implemented')
         });
         this.button = button
-        this.scene.add.existing(this);
+        this.scene.add.existing(this)
       }
 }
 
