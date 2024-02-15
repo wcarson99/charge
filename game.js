@@ -159,6 +159,7 @@ class Item extends Phaser.GameObjects.Image
         this.index = index
         this.items = items
         this.typ = typ
+        this.newSquare = null
         
         this.setData('obj', this)
         this.setData('newSquare',undefined)
@@ -280,11 +281,13 @@ class Unit extends Phaser.GameObjects.Container
             .setOrigin(0,0)
             .setDisplaySize(squareX,squareY)
         )
-        //this.sprite.play(imageName+'_anim')
         this.statusText = scene.add.text(5,48, this.statusString(), 
             { fontSize: '10px', fontFamily:buttonFontFamily, color:'White'})
         this.statusText.setOrigin(0,0)
-       this.add([this.sprite, this.statusText])
+        this.add([this.sprite, this.statusText])
+        this.scene.add.existing(this)
+       //this.sprite.play(imageName+'_anim')
+
     }
 
     statusString()
@@ -352,10 +355,11 @@ class Square extends Phaser.GameObjects.Image
         this.setDisplaySize(squareX,squareY)
         this.setSize(squareX,squareY)
         this.setOrigin(0,0)
-        this.setData('obj',this)
+        this.setData('obj', this)
         this.on('pointerover', (pointer) => this.setTint(0x808080), this)
         this.on('pointerout', (pointer) => this.clearTint(), this)
-        
+        this.setInteractive()
+
         this.scene.add.existing(this);
 
         board.add(this)
@@ -427,10 +431,11 @@ class Board extends Phaser.GameObjects.Container
         let height = columns*squareY
         this.setSize(width, height)
         this.mapData = []
+        this.scene.add.existing(this)
+
         this.createMap()
         this.addComputerUnits()
 
-        this.scene.add.existing(this)
     }
 
     createMap()
@@ -662,6 +667,14 @@ class Play extends Phaser.Scene
         this.physics.add.overlap(board.group, items.group, function(squareImage, item)
         {   
             let square = squareImage.getData('obj')
+            console.log()
+            if (item.newSquare) 
+            {
+                console.log('item.newSquare')
+                console.log(item.newSquare)
+                item.newSquare.clearTint()
+            }
+            square.setTint(0x808080)
             item.newSquare = square
         })
 
