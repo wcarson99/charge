@@ -177,10 +177,8 @@ class Items extends Phaser.GameObjects.Container
 {
     constructor(scene, x, y, defn)
     {
-        super(scene)
+        super(scene, x, y)
         this.scene = scene
-        this.x = x
-        this.y = y
 
         const image = scene.add.image(0,0,'white')
         image.setDisplaySize(numItems*squareX,squareY)
@@ -231,8 +229,7 @@ class Items extends Phaser.GameObjects.Container
             console.log(i)
             let item = this.remaining.shift()
             console.log(item)
-            item.x = i*squareX
-            item.y = 0
+            item.setPosition(i*squareX, 0)
             item.setVisible(true)
             this.add(item)
             i++
@@ -262,8 +259,7 @@ class Unit extends Phaser.GameObjects.Container
         this.hp = this.defn.hp
         this.shield = this.defn.shield
 
-        this.x = column*squareX
-        this.y = row*squareY
+        this.setPosition(column*squareX, row*squareY)
         this.setSize(squareX, squareY)
 
         let imageName = typ
@@ -344,12 +340,11 @@ class Square extends Phaser.GameObjects.Image
     {
         super(board.scene,c*squareX,r*squareY,type)
 
-        this.board = board;
-        this.index = index;
-        this.column = c;
-        this.row = r;
-        this.x = c*squareX
-        this.y = r*squareY
+        this.board = board
+        this.index = index
+        this.column = c
+        this.row = r
+        this.setPosition(c*squareX,r*squareY)
         this.contents = []
         this.nextContents = []
         this.setDisplaySize(squareX,squareY)
@@ -562,10 +557,8 @@ class Board extends Phaser.GameObjects.Container
 class Button extends Phaser.GameObjects.Container
 {
     constructor(scene, x, y, key, text, fontColor = '#000') {
-        super(scene)
+        super(scene, x, y)
         this.scene = scene
-        this.x = x
-        this.y = y
 
         const button = this.scene.add.image(0, 0, key).setInteractive()
         const buttonText = this.scene.add.text(0, 0, text, 
@@ -679,8 +672,7 @@ class Play extends Phaser.Scene
         })
 
         this.input.on('drag', function (pointer, gameObject, dragX, dragY) {
-            gameObject.x = dragX
-            gameObject.y = dragY
+            gameObject.setPosition(dragX, dragY)
         })
 
         this.input.on('dragend', function (pointer, item) {
@@ -692,6 +684,7 @@ class Play extends Phaser.Scene
             {
                 item.setVisible(false)
                 items.remove(item)
+                item.newSquare.clearTint()
                 board.addUnit(item.typ, item.newSquare.column, boardRows-1, -1)
                 item.destroy()
             }
