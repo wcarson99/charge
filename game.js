@@ -35,6 +35,7 @@ const numItems = 6
 
 const moveFrames = 5
 buttonFontFamily = "Arial" //"Verdana"
+const ZIGZAG = 'zigzag'
 
 let timeText;
 let board;
@@ -51,8 +52,9 @@ const square_types = {
 }
 
 const unitDefns = {
-    'unit_soldier': {'attack':1, 'hp':10, 'shield':0},
-    'unit_shield': {'attack':1, 'hp':10, 'shield':1}
+    'unit_soldier': {'attack':1, 'hp':10, 'shield':0,'horizontal':'none'},
+    'unit_shield': {'attack':1, 'hp':10, 'shield':1, 'horizontal':'none'},
+    'unit_snake': {'attack':5, 'hp':3, 'shield':0, 'horizontal':ZIGZAG}
 }
 
 const unitAbbrevs = {
@@ -96,6 +98,7 @@ const levels = [
                 attack: 2,
                 shield: 2,
                 items: [{ typ:'unit_soldier', num:8},
+                        { typ:'unit_snake', num:1},
                         { typ:'unit_shield', num:3}],
                 rowChange: -1,
                 color: '#fb0000'
@@ -253,12 +256,27 @@ class Unit extends Phaser.GameObjects.Container
         this.column = column
         this.row = row
         this.rowChange = rowChange
+        this.columnChange = 0
 
         this.defn = unitDefns[typ]
         this.attack = this.defn.attack
         this.hp = this.defn.hp
         this.shield = this.defn.shield
-
+        this.horizontal = this.defn.horizontal
+        if (this.horizontal==ZIGZAG)
+        {
+            if (column==0) {
+                this.columnChange = 1
+            }
+            else
+            {
+                this.columnChange = -1
+            }
+        }
+        else
+        {
+            this.columnChange = 0
+        }
         this.setPosition(column*squareX, row*squareY)
         this.setSize(squareX, squareY)
 
@@ -294,6 +312,11 @@ class Unit extends Phaser.GameObjects.Container
     update()
     {
         this.statusText.setText(this.statusString())
+        console.log(this.horizontal)
+        if (this.horizontal==ZIGZAG)
+        {
+            this.columnChange = -1*this.columnChange
+        }
     }
 
     takeDamage(attack)
@@ -307,7 +330,7 @@ class Unit extends Phaser.GameObjects.Container
             this.hp = this.hp + this.shield - attack
             this.shield = 0
         }
-        this.update()
+        //this.update()
     }
 
     dealDamage(units)
@@ -368,12 +391,15 @@ class Square extends Phaser.GameObjects.Image
 
     resolveCombat()
     {
-        if (this.contents.length<=1)
+        if (this.contents.length==1)
         {
             return
         }
-       const combatAnim = new CombatAnimation(
-           this.board.scene, this.board, this.x, this.y)
+        if (this.contents.length>1)
+        {
+            const combatAnim = new CombatAnimation(
+                this.board.scene, this.board, this.x, this.y)     
+        }
         
         while (this.contents.length>1)
         {
@@ -397,10 +423,15 @@ class Square extends Phaser.GameObjects.Image
                 }
                 else
                 {
+                    unit.update()
                     newContents.push(unit)
                 }
             }
             this.contents = newContents
+        }
+        if (this.contents.length==1)
+        {
+            this.contents[0].update()
         }
     }
 }
@@ -462,7 +493,14 @@ class Board extends Phaser.GameObjects.Container
                 while (contents.length>0)
                 {
                     let unit = contents.pop()
+                    console.log(unit)
                     let newRow = unit.row + unit.rowChange
+                    console.log(unit.column)
+                    console.log(typeof unit.column)
+                    console.log(unit.columnChange)
+                    console.log(typeof unit.columnChange)
+                    let newColumn = unit.column + unit.columnChange
+                    console.log(newColumn)
                     if (newRow==boardRows)
                     {
                         unit.fightPlayer(this.human)
@@ -484,6 +522,7 @@ class Board extends Phaser.GameObjects.Container
                     else
                     {
                         unit.row = newRow
+                        unit.column = newColumn
                         movingUnits.push(unit)
                     }
                     this.mapData[unit.row][unit.column].nextContents.push(unit)
@@ -499,6 +538,7 @@ class Board extends Phaser.GameObjects.Container
                     for (let unit of movingUnits) {
                         //unit.sprite.play(unit.typ)
                         unit.y += unit.rowChange * squareY / moveFrames
+                        unit.x += unit.columnChange * squareX / moveFrames
                     }
                 },
                 callbackScope: this,
@@ -539,9 +579,15 @@ class Board extends Phaser.GameObjects.Container
         this.unitData = []
         let level = levels[0]
         let units_def = level.players["computer"].units
-        for (let c in units_def[this.turn])
+        if (units_def.length==this.turn)
+        {
+            return
+        }
+        console.log(units_def)
+        for (let c=0; c<boardColumns; c++)
         {
             let abbrev = units_def[this.turn][c]
+            console.log(c+' '+abbrev)
             if (abbrev=='.')
             {
                 continue
@@ -598,7 +644,10 @@ class Play extends Phaser.Scene
             { frameWidth: 30, frameHeight: 30 })
         this.load.spritesheet('unit_shield_up', 'assets/unit_shield_up.png',
             { frameWidth: 60, frameHeight: 60 })
-    }
+        this.load.spritesheet('unit_snake_up', 'assets/unit_snake_up.png',
+            { frameWidth: 30, frameHeight: 30 })
+
+        }
 
     timerEvent;
     stateText;
@@ -657,9 +706,9 @@ class Play extends Phaser.Scene
         restartButton.button.on('pointerup', (pointer) => this.restart())
         restartButton.setVisible(false)
 
-        this.physics.add.overlap(board.group, items.group, function(squareImage, item)
+        this.physics.add.overlap(board.group, items.group, function(square, item)
         {   
-            let square = squareImage.getData('obj')
+            //let square = squareImage.getData('obj')
             console.log()
             if (item.newSquare) 
             {
