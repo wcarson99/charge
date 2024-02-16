@@ -232,6 +232,8 @@ class Items extends Phaser.GameObjects.Container
             console.log(i)
             let item = this.remaining.shift()
             console.log(item)
+            item.row=0
+            item.column = i
             item.setPosition(i*squareX, 0)
             item.setVisible(true)
             this.add(item)
@@ -330,7 +332,6 @@ class Unit extends Phaser.GameObjects.Container
             this.hp = this.hp + this.shield - attack
             this.shield = 0
         }
-        //this.update()
     }
 
     dealDamage(units)
@@ -423,7 +424,7 @@ class Square extends Phaser.GameObjects.Image
                 }
                 else
                 {
-                    unit.update()
+                    //unit.update()
                     newContents.push(unit)
                 }
             }
@@ -526,7 +527,7 @@ class Board extends Phaser.GameObjects.Container
                         movingUnits.push(unit)
                     }
                     this.mapData[unit.row][unit.column].nextContents.push(unit)
-                    unit.update()
+                    //unit.update()
                 }
             }
         }
@@ -716,6 +717,7 @@ class Play extends Phaser.Scene
                 console.log(item.newSquare)
                 item.newSquare.clearTint()
             }
+            console.log('square '+typeof square)
             square.setTint(0x808080)
             item.newSquare = square
         })
@@ -729,10 +731,18 @@ class Play extends Phaser.Scene
             console.log('item')
             console.log(item)
             console.log(typeof item.newSquare)
-            if (typeof item.newSquare != "undefined")
+        
+            if (item.newSquare == null)
+            {
+                console.log('Was at '+item.x+' '+item.y)
+                item.setPosition(item.column*squareX,item.row*squareY)
+                console.log('Now at '+item.x+' '+item.y)
+            }
+            else
             {
                 item.setVisible(false)
                 items.remove(item)
+                console.log('adfadf '+item.newSquare+' '+typeof item.newSquare)
                 item.newSquare.clearTint()
                 board.addUnit(item.typ, item.newSquare.column, boardRows-1, -1)
                 item.destroy()
