@@ -248,11 +248,11 @@ class Items extends Phaser.GameObjects.Container
 
 class Unit extends Phaser.GameObjects.Container
 {
-    constructor(scene, owner, index, typ, column, row, rowChange)
+    constructor(scene, square, index, typ, column, row, rowChange)
     {
         super(scene)
 
-        this.owner = owner
+        this.owner = square
         this.index = index
         this.typ = typ
         this.column = column
@@ -321,6 +321,12 @@ class Unit extends Phaser.GameObjects.Container
         }
     }
 
+    newRowColumn()
+    {
+        this.row += this.rowChange
+        this.column += this.columnChange
+    }
+
     takeDamage(attack)
     {
         if (this.shield>attack)
@@ -364,6 +370,7 @@ class Square extends Phaser.GameObjects.Image
     {
         super(board.scene,c*squareX,r*squareY,type)
 
+        this.scene = board.scene
         this.board = board
         this.index = index
         this.column = c
@@ -385,9 +392,11 @@ class Square extends Phaser.GameObjects.Image
         board.group.add(this) 
     }
 
-    addUnit(unit)
+    addUnit(typ, c, r, rowChange)
     {
+        const unit = new Unit(this.scene, this, 0, typ, c, r, rowChange)
         this.contents.push(unit)
+        this.board.add(unit)
     }
 
     resolveCombat()
@@ -486,51 +495,69 @@ class Board extends Phaser.GameObjects.Container
     {
         // Advance all units, handling top and bottom rows as attacking a player
         let movingUnits = []
-        for (let r of this.mapData)
+
+        if (false)
         {
-            for (let square of r)
+            let units = this.getAll('newSquare')
+            for (let u=0; u<units.length; u++)
             {
-                let contents = square.contents
-                while (contents.length>0)
+                let unit = units[u]
+                let moved = unit.newRowColumn()
+                if (moved)
                 {
-                    let unit = contents.pop()
-                    console.log(unit)
-                    let newRow = unit.row + unit.rowChange
-                    console.log(unit.column)
-                    console.log(typeof unit.column)
-                    console.log(unit.columnChange)
-                    console.log(typeof unit.columnChange)
-                    let newColumn = unit.column + unit.columnChange
-                    console.log(newColumn)
-                    if (newRow==boardRows)
-                    {
-                        unit.fightPlayer(this.human)
-                        if (unit.hp<=0)
-                        {
-                            unit.destroy()
-                            continue
+                    movingUnits.add(moved)
+                }
+                else if (unit.row==boardRows)
+                {
+                    unit.fightPlayer(this.human)
+                    if (unit.hp <= 0) {
+                        unit.destroy()
+                        continue
+                    }
+                }
+                else if (unit.row==-1)
+                {
+                    unit.fightPlayer(this.computer)
+                    if (unit.hp <= 0) {
+                        unit.destroy()
+                        continue
+                    }
+                }
+            }    
+        }
+        if (true) {
+
+            for (let r of this.mapData) {
+                for (let square of r) {
+                    let contents = square.contents
+                    while (contents.length > 0) {
+                        let unit = contents.pop()
+                        console.log(unit)
+                        unit.newRowColumn()
+                        if (unit.row == boardRows) {
+                            unit.fightPlayer(this.human)
+                            if (unit.hp <= 0) {
+                                unit.destroy()
+                                continue
+                            }
                         }
-                    }
-                    else if (newRow==-1)
-                    {
-                        unit.fightPlayer(this.computer)
-                        if (unit.hp<=0)
-                        {
-                            unit.destroy()
-                            continue
+                        else if (unit.row == -1) {
+                            unit.fightPlayer(this.computer)
+                            if (unit.hp <= 0) {
+                                unit.destroy()
+                                continue
+                            }
                         }
+                        else {
+                            movingUnits.push(unit)
+                        }
+                        this.mapData[unit.row][unit.column].nextContents.push(unit)
+                        //unit.update()
                     }
-                    else
-                    {
-                        unit.row = newRow
-                        unit.column = newColumn
-                        movingUnits.push(unit)
-                    }
-                    this.mapData[unit.row][unit.column].nextContents.push(unit)
-                    //unit.update()
                 }
             }
         }
+
         this.timedEvent = this.scene.time.addEvent(
             {
                 delay: 100,
@@ -568,11 +595,8 @@ class Board extends Phaser.GameObjects.Container
 
     addUnit(typ, c, r, rowChange)
     {
-        this.unitIndex++
-        const unit = new Unit(this.scene, this, this.unitIndex, typ, c, r, rowChange)
-        this.add(unit)
         let square = this.mapData[r][c]
-        square.addUnit(unit)
+        square.addUnit(typ,c,r,rowChange)
     }
 
     addComputerUnits() 
@@ -709,15 +733,10 @@ class Play extends Phaser.Scene
 
         this.physics.add.overlap(board.group, items.group, function(square, item)
         {   
-            //let square = squareImage.getData('obj')
-            console.log()
             if (item.newSquare) 
             {
-                console.log('item.newSquare')
-                console.log(item.newSquare)
                 item.newSquare.clearTint()
             }
-            console.log('square '+typeof square)
             square.setTint(0x808080)
             item.newSquare = square
         })
@@ -727,22 +746,15 @@ class Play extends Phaser.Scene
         })
 
         this.input.on('dragend', function (pointer, item) {
-            //let item = gameObject
-            console.log('item')
-            console.log(item)
-            console.log(typeof item.newSquare)
         
             if (item.newSquare == null)
             {
-                console.log('Was at '+item.x+' '+item.y)
                 item.setPosition(item.column*squareX,item.row*squareY)
-                console.log('Now at '+item.x+' '+item.y)
             }
             else
             {
-                item.setVisible(false)
+                //item.setVisible(false)
                 items.remove(item)
-                console.log('adfadf '+item.newSquare+' '+typeof item.newSquare)
                 item.newSquare.clearTint()
                 board.addUnit(item.typ, item.newSquare.column, boardRows-1, -1)
                 item.destroy()
@@ -750,8 +762,6 @@ class Play extends Phaser.Scene
         })
 
         this.timedEvent = this.time.addEvent({ delay: 2000, callback: this.onTimer, callbackScope: this, loop: true });
-    
-        //console.log(game)
     }
 
     restart()
