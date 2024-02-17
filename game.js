@@ -236,7 +236,7 @@ class Unit extends Phaser.GameObjects.Container
         this.add([this.sprite, this.statusText])
         this.scene.add.existing(this)
         square.board.add(this)
-        //this.sprite.play(imageName+'_anim')
+        this.sprite.play(imageName+'_anim')
 
     }
 
@@ -358,7 +358,7 @@ class Square extends Phaser.GameObjects.Container
 
     addUnit(typ, c, r, rowChange)
     {
-        const unit = new Unit(this.scene, this, 0, typ, c, r, rowChange)
+        const unit = new Unit(this.scene, this, 0, typ, c, r, rowChange)    
         this.contents.push(unit)
     }
 
@@ -556,12 +556,33 @@ class Item extends Phaser.GameObjects.Sprite
     }
 }
 
+class Item2 extends Phaser.GameObjects.Sprite
+{   
+    constructor(scene, typ)
+    {
+        super(scene,0,0,typ+'_up')
+        scene.add.existing(this)
+
+        this.items = items
+        this.typ = typ
+        this.newSquare = null
+        this.animKey = typ+'_up_anim'
+        
+        this.setDisplaySize(squareX,squareY)
+        this.setSize(squareX,squareY)
+        this.setInteractive({ draggable: true})
+        this.setOrigin(0,0)
+    }
+}
+
 class Items extends Phaser.GameObjects.Container
 {
     constructor(scene, x, y, defn)
     {
         super(scene, x, y)
         this.scene.add.existing(this)
+
+        this.defn = defn
 
         const image = scene.add.image(0,0,'white')
         image.setDisplaySize(numItems*squareX,squareY)
@@ -583,6 +604,9 @@ class Items extends Phaser.GameObjects.Container
             for (let i=0; i<num; i++)
             { 
                 let item = new Item(this.scene, this, typ)
+                console.log('Playing')
+                console.log(item)
+                item.play(item.animKey)
                 item.setVisible(false)
                 this.add(item)
             }
@@ -652,11 +676,6 @@ class Play extends Phaser.Scene
         let levelNum = 0
         let levelDefn = levels[levelNum]
 
-        board = new Board(this, boardXOffset, boardYOffset,0)
-        computer = new Player(this, screenX/2,20, levelDefn.players.computer)
-        human = new Player(this, screenX/2, 850, levelDefn.players.human)
-        items = new Items(this, boardXOffset,730, levelDefn['players']['human']['items'])
-
         this.anims.create({
             key: 'combat_anim',
             frames: 'combat',
@@ -684,6 +703,19 @@ class Play extends Phaser.Scene
             repeat: 2
 
         })
+
+        this.anims.create({
+            key:'unit_snake_up_anim',
+            frames: 'unit_snake_up',
+            frameRate: 5,
+            repeat: 2
+
+        })
+
+        board = new Board(this, boardXOffset, boardYOffset,0)
+        computer = new Player(this, screenX/2,20, levelDefn.players.computer)
+        human = new Player(this, screenX/2, 850, levelDefn.players.human)
+        items = new Items(this, boardXOffset,730, levelDefn['players']['human']['items'])
 
         chargeButton = new Button(this, screenX/2,830,'button_charge')
         chargeButton.button.setDisplaySize(80,80)
@@ -817,7 +849,7 @@ const config = {
         arcade: {
             //gravity: { y: 300 },
             // If you want to see hit boxes
-            debug: true
+            //debug: true
         }
     },
     pixelArt: true,
