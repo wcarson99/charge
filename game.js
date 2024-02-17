@@ -179,93 +179,6 @@ class Player
     }
 }
 
-class Item extends Phaser.GameObjects.Sprite
-{   
-    constructor(scene, items, typ)
-    {
-        super(scene,0,0,typ+'_up')
-        this.items = items
-        this.typ = typ
-        this.newSquare = null
-        this.animKey = typ+'_up_anim'
-        
-        this.setDisplaySize(squareX,squareY)
-        this.setSize(squareX,squareY)
-        this.setInteractive({ draggable: true})
-        this.setOrigin(0,0)
-
-        items.group.add(this)
-        this.scene.add.existing(this)
-    }
-}
-
-class Items extends Phaser.GameObjects.Container
-{
-    constructor(scene, x, y, defn)
-    {
-        super(scene, x, y)
-        this.scene = scene
-
-        const image = scene.add.image(0,0,'white')
-        image.setDisplaySize(numItems*squareX,squareY)
-        image.setOrigin(0,0)
-        image.setTint(0x008000)
-        this.add(image) 
-
-        this.group = scene.physics.add.group()
-        this.scene.add.existing(this)
-
-        //this.available = []
-        this.remaining = []
-        this.createItems(defn);
-    }
-
-    createItems(defn)
-    {   
-        for (let itemDefn of defn)
-        {
-            let typ = itemDefn['typ']
-            let num = itemDefn['num']
-            for (let i=0; i<num; i++)
-            { 
-                let item = new Item(this.scene, this, typ)
-                item.setVisible(false)
-                this.remaining.push(item)
-            }
-        }
-        this.fill()
-    }
-
-    fill()
-    {        
-        let gameObjects = this.getAll()
-        for (let item of gameObjects.slice(1,gameObjects.length))
-        {   
-            items.remove(item)
-            item.setVisible(false)
-            this.remaining.push(item)
-        }
-
-        let i = 0
-        while (this.remaining.length>0)
-        {
-            console.log(i)
-            let item = this.remaining.shift()
-            console.log(item)
-            item.row=0
-            item.column = i
-            item.setPosition(i*squareX, 0)
-            item.setVisible(true)
-            this.add(item)
-            i++
-            if (i==numItems)
-            {
-                break
-            }
-        }
-    }
-}
-
 class Unit extends Phaser.GameObjects.Container
 {
     constructor(scene, square, index, typ, column, row, rowChange)
@@ -619,6 +532,91 @@ class Board extends Phaser.GameObjects.Container
             this.addUnit(typ, c, 0, 1)
         } 
         this.turn +=1
+    }
+}
+
+class Item extends Phaser.GameObjects.Sprite
+{   
+    constructor(scene, items, typ)
+    {
+        super(scene,0,0,typ+'_up')
+        this.scene.add.existing(this)
+
+        this.items = items
+        this.typ = typ
+        this.newSquare = null
+        this.animKey = typ+'_up_anim'
+        
+        this.setDisplaySize(squareX,squareY)
+        this.setSize(squareX,squareY)
+        this.setInteractive({ draggable: true})
+        this.setOrigin(0,0)
+
+        items.group.add(this)
+    }
+}
+
+class Items extends Phaser.GameObjects.Container
+{
+    constructor(scene, x, y, defn)
+    {
+        super(scene, x, y)
+        this.scene.add.existing(this)
+
+        const image = scene.add.image(0,0,'white')
+        image.setDisplaySize(numItems*squareX,squareY)
+        image.setOrigin(0,0)
+        image.setTint(0x008000)
+        this.add(image) 
+
+        this.group = scene.physics.add.group()
+
+        this.createItems(defn);
+    }
+
+    createItems(defn)
+    {   
+        for (let itemDefn of defn)
+        {
+            let typ = itemDefn['typ']
+            let num = itemDefn['num']
+            for (let i=0; i<num; i++)
+            { 
+                let item = new Item(this.scene, this, typ)
+                item.setVisible(false)
+                this.add(item)
+            }
+        }
+        this.fill()
+    }
+
+    fill()
+    {        
+        let gameObjects = this.getAll('newSquare')
+        for (let item of gameObjects)
+        {   
+            if (item.visible==true)
+            {
+                this.remove(item)
+                item.setVisible(false)
+                this.add(item)
+            }
+        }
+
+        gameObjects = this.getAll('newSquare')
+        for (let i=0; i<gameObjects.length; i++)
+        {
+            let item = gameObjects[i]
+            item.row=0
+            item.column = i
+            item.setPosition(i*squareX, 0)
+            item.setVisible(true)
+            this.add(item)
+            if (i==numItems-1)
+            {
+                break
+            }
+        }
     }
 }
 
