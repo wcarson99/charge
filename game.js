@@ -302,7 +302,7 @@ class Unit extends Phaser.GameObjects.Container
         this.statusText.setOrigin(0,0)
         this.add([this.sprite, this.statusText])
         this.scene.add.existing(this)
-       //this.sprite.play(imageName+'_anim')
+        //this.sprite.play(imageName+'_anim')
 
     }
 
@@ -321,14 +321,10 @@ class Unit extends Phaser.GameObjects.Container
         }
     }
 
-    newRowColumn()
+    move()
     {
         this.row += this.rowChange
         this.column += this.columnChange
-    }
-
-    move()
-    {
         this.timedEvent = this.scene.time.addEvent(
             {
                 delay: 100,
@@ -512,71 +508,33 @@ class Board extends Phaser.GameObjects.Container
         // Advance all units, handling top and bottom rows as attacking a player
         let movingUnits = []
 
-        if (false)
-        {
-            let units = this.getAll('newSquare')
-            for (let u=0; u<units.length; u++)
-            {
-                let unit = units[u]
-                let moved = unit.newRowColumn()
-                if (moved)
-                {
-                    movingUnits.add(moved)
-                }
-                else if (unit.row==boardRows)
-                {
-                    unit.fightPlayer(this.human)
-                    if (unit.hp <= 0) {
-                        unit.destroy()
-                        continue
-                    }
-                }
-                else if (unit.row==-1)
-                {
-                    unit.fightPlayer(this.computer)
-                    if (unit.hp <= 0) {
-                        unit.destroy()
-                        continue
-                    }
-                }
-            }    
-        }
-        if (true) {
-
-            for (let r of this.mapData) {
-                for (let square of r) {
-                    let contents = square.contents
-                    while (contents.length > 0) {
-                        let unit = contents.pop()
-                        console.log(unit)
-                        unit.newRowColumn()
-                        if (unit.row == boardRows) {
-                            unit.fightPlayer(this.human)
-                            if (unit.hp <= 0) {
-                                unit.destroy()
-                                continue
-                            }
+        for (let r of this.mapData) {
+            for (let square of r) {
+                let contents = square.contents
+                while (contents.length > 0) {
+                    let unit = contents.pop()
+                    unit.move()
+                    if (unit.row == boardRows-1) {
+                        unit.fightPlayer(this.human)
+                        if (unit.hp <= 0) {
+                            unit.destroy()
+                            continue
                         }
-                        else if (unit.row == -1) {
-                            unit.fightPlayer(this.computer)
-                            if (unit.hp <= 0) {
-                                unit.destroy()
-                                continue
-                            }
-                        }
-                        else {
-                            movingUnits.push(unit)
-                        }
-                        this.mapData[unit.row][unit.column].nextContents.push(unit)
-                        //unit.update()
                     }
+                    else if (unit.row == 0) {
+                        unit.fightPlayer(this.computer)
+                        if (unit.hp <= 0) {
+                            unit.destroy()
+                            continue
+                        }
+                    }
+                    else {
+                        movingUnits.push(unit)
+                    }
+                    this.mapData[unit.row][unit.column].nextContents.push(unit)
+                    //unit.update()
                 }
             }
-        }
-
-        for (let unit of movingUnits) 
-        {
-            unit.move()
         }
 
         // Update square contents
