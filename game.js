@@ -516,22 +516,19 @@ class Board extends Phaser.GameObjects.Container
                     unit.move()
                     if (unit.row == boardRows-1) {
                         unit.fightPlayer(this.human)
-                        if (unit.hp <= 0) {
-                            unit.destroy()
-                            continue
-                        }
                     }
                     else if (unit.row == 0) {
                         unit.fightPlayer(this.computer)
-                        if (unit.hp <= 0) {
-                            unit.destroy()
-                            continue
-                        }
                     }
-                    else {
-                        movingUnits.push(unit)
+                    if (unit.hp>0)
+                    {
+                        movingUnits.push(unit)                        
+                        this.mapData[unit.row][unit.column].nextContents.push(unit)
                     }
-                    this.mapData[unit.row][unit.column].nextContents.push(unit)
+                    else
+                    {
+                        unit.destroy()
+                    }
                     //unit.update()
                 }
             }
