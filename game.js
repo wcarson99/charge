@@ -5,6 +5,32 @@ For creating sprites - https://www.piskelapp.com/
 For Glitch - https://en.flossmanuals.net/phaser-game-making-in-glitch/_full/
 */
 
+class Button extends Phaser.GameObjects.Container
+{
+    constructor(scene, x, y, key, text, fontColor = '#000') {
+        super(scene, x, y)
+        this.scene = scene
+
+        const button = this.scene.add.image(0, 0, key).setInteractive()
+        const buttonText = this.scene.add.text(0, 0, text, 
+            { fontSize: '28px', color: fontColor , fontFamily:buttonFontFamily})
+        button.setDisplaySize(buttonText.width,30)
+            
+        Phaser.Display.Align.In.Center(buttonText, button);
+        this.add(button);
+        this.add(buttonText);
+        button.on('pointerover', (pointer) => button.setTint(0x808080))
+        button.on('pointerout', (pointer) => button.clearTint())
+        button.on('pointerdown', (pointer) => button.setTint(0xc08080))
+        
+        button.on('pointerup', () => {
+          console.log('No pointerup handler implemented')
+        });
+        this.button = button
+        this.scene.add.existing(this)
+      }
+}
+
 class CombatAnimation extends Phaser.GameObjects.Sprite
 {
     constructor(scene, board, x, y)
@@ -111,7 +137,7 @@ class Player
 {
     constructor(scene, x, y, defn)
     {
-        this.board = scene;
+        this.scene = scene;
         this.hp = defn.hp
         this.attack = defn.attack
         this.shield = defn.shield
@@ -155,16 +181,13 @@ class Player
 
 class Item extends Phaser.GameObjects.Image
 {   
-    constructor(scene, index, items, typ)
+    constructor(scene, items, typ)
     {
         super(scene,0,0,typ+'_up')
-        this.scene = scene
-        this.index = index
         this.items = items
         this.typ = typ
         this.newSquare = null
         
-        this.setData('obj', this)
         this.setData('newSquare',undefined)
         this.setDisplaySize(squareX,squareY)
         this.setSize(squareX,squareY)
@@ -199,18 +222,15 @@ class Items extends Phaser.GameObjects.Container
 
     createItems(defn)
     {   
-        console.log(defn)
-        let ind = 0
         for (let itemDefn of defn)
         {
             let typ = itemDefn['typ']
             let num = itemDefn['num']
             for (let i=0; i<num; i++)
             { 
-                let item = new Item(this.scene, ind, this, typ)
+                let item = new Item(this.scene, this, typ)
                 item.setVisible(false)
                 this.remaining.push(item)
-                ind += 1
             }
         }
         this.fill()
@@ -403,7 +423,6 @@ class Square extends Phaser.GameObjects.Container
         image.setDisplaySize(squareX,squareY)
         image.setSize(squareX,squareY)
         image.setOrigin(0,0)
-        image.setData('obj', this)
         image.on('pointerover', (pointer) => this.setTint(0x808080), this)
         image.on('pointerout', (pointer) => this.clearTint(), this)
         image.setInteractive()
@@ -606,32 +625,6 @@ class Board extends Phaser.GameObjects.Container
     }
 }
 
-class Button extends Phaser.GameObjects.Container
-{
-    constructor(scene, x, y, key, text, fontColor = '#000') {
-        super(scene, x, y)
-        this.scene = scene
-
-        const button = this.scene.add.image(0, 0, key).setInteractive()
-        const buttonText = this.scene.add.text(0, 0, text, 
-            { fontSize: '28px', color: fontColor , fontFamily:buttonFontFamily})
-        button.setDisplaySize(buttonText.width,30)
-            
-        Phaser.Display.Align.In.Center(buttonText, button);
-        this.add(button);
-        this.add(buttonText);
-        button.on('pointerover', (pointer) => button.setTint(0x808080))
-        button.on('pointerout', (pointer) => button.clearTint())
-        button.on('pointerdown', (pointer) => button.setTint(0xc08080))
-        
-        button.on('pointerup', () => {
-          console.log('No pointerup handler implemented')
-        });
-        this.button = button
-        this.scene.add.existing(this)
-      }
-}
-
 const animConfig = { frameWidth: 60, frameHeight: 60 }
 class Play extends Phaser.Scene
 {
@@ -649,7 +642,7 @@ class Play extends Phaser.Scene
         this.load.spritesheet('unit_soldier_down', 'assets/unit_soldier_down.png',
             { frameWidth: 30, frameHeight: 30 })
         this.load.spritesheet('unit_shield_up', 'assets/unit_shield_up.png',
-            { frameWidth: 60, frameHeight: 60 })
+            animConfig)
         this.load.spritesheet('unit_snake_up', 'assets/unit_snake_up.png',
             { frameWidth: 30, frameHeight: 30 })
 
@@ -663,12 +656,10 @@ class Play extends Phaser.Scene
         //timeText = this.add.text(100,0,'time: ', { fontSize: '14px'})
         let levelNum = 0
         let levelDefn = levels[levelNum]
-        board = new Board(this, boardRows, boardColumns,0)
 
+        board = new Board(this, boardRows, boardColumns,0)
         computer = new Player(this, screenX/2,20, levelDefn.players.computer)
         human = new Player(this, screenX/2, 850, levelDefn.players.human)
-
-        console.log('boardXOffset '+boardXOffset)
         items = new Items(this, boardXOffset,730, levelDefn['players']['human']['items'])
 
         this.anims.create({
@@ -745,6 +736,7 @@ class Play extends Phaser.Scene
         console.log('Restarting')
         this.scene.restart()
     }
+
     performActions()
     {
         console.log('this ')
@@ -753,8 +745,6 @@ class Play extends Phaser.Scene
         board.updateMap()
         items.fill()
 
-        //let human = board.human
-        //let computer = board.computer
         human.update()
         computer.update()
         if (human.hp<=0 || computer.hp<=0)
