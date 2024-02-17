@@ -699,22 +699,13 @@ class Play extends Phaser.Scene
 
         })
 
-        if (true)
-        {
-            const chargeButtonImg = this.add.image(0,0,"button_charge")
-            chargeButton = (
-                this.add.container(screenX/2,830, [chargeButtonImg])
-                .setSize(80,80)
-                .setInteractive()
-                .on('pointerover', (pointer) => chargeButtonImg.setTint(0x808080))
-                .on('pointerout', (pointer) => chargeButtonImg.clearTint())
-                .on('pointerup', (pointer) => this.performActions())
-            )
-        }
+        chargeButton = new Button(this, screenX/2,830,'button_charge')
+        chargeButton.button.setDisplaySize(80,80)
+        chargeButton.button.on('pointerup', (pointer) => this.performActions())
 
         restartButton = new Button(this, screenX/2, 830, 'white', 'RESTART')
-        restartButton.button.on('pointerup', (pointer) => this.restart())
         restartButton.setVisible(false)
+        restartButton.button.on('pointerup', (pointer) => this.restart())
 
         this.physics.add.overlap(board.group, items.group, function(square, item)
         {   
