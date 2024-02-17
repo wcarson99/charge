@@ -47,7 +47,7 @@ class CombatAnimation extends Phaser.GameObjects.Sprite
     }
 }
 
-const screenX = 600
+const screenX = 400
 const screenY = 900
 const squareX = 60
 const squareY = 60
@@ -59,7 +59,9 @@ const boardXOffset = (screenX-squareX*boardColumns)/2
 const boardYOffset = 60
 const numItems = 6
 
-const moveFrames = 5
+const unitFrameRate = 4
+const unitAnimationDuration = 1000
+const moveFrames = 4
 buttonFontFamily = "Arial" //"Verdana"
 const ZIGZAG = 'zigzag'
 
@@ -123,8 +125,9 @@ const levels = [
                 hp:10,
                 attack: 2,
                 shield: 2,
-                items: [{ typ:'unit_soldier', num:8},
-                        { typ:'unit_snake', num:1},
+                items: [{ typ:'unit_soldier', num:4},
+                        { typ:'unit_snake', num:2},
+                        { typ:'unit_soldier', num:2},
                         { typ:'unit_shield', num:3}],
                 rowChange: -1,
                 color: '#fb0000'
@@ -224,7 +227,7 @@ class Unit extends Phaser.GameObjects.Container
         {
             imageName += '_up'
         }
-        console.log(this)
+        this.animKey = imageName+'_anim'
         
         this.sprite = (scene.add.sprite(0,0,imageName)
             .setOrigin(0,0)
@@ -236,7 +239,7 @@ class Unit extends Phaser.GameObjects.Container
         this.add([this.sprite, this.statusText])
         this.scene.add.existing(this)
         square.board.add(this)
-        this.sprite.play(imageName+'_anim')
+        //this.sprite.play(imageName+'_anim')
 
     }
 
@@ -248,7 +251,6 @@ class Unit extends Phaser.GameObjects.Container
     update()
     {
         this.statusText.setText(this.statusString())
-        console.log(this.horizontal)
         if (this.horizontal==ZIGZAG)
         {
             this.columnChange = -1*this.columnChange
@@ -257,24 +259,29 @@ class Unit extends Phaser.GameObjects.Container
 
     move()
     {
+        this.sprite.play(this.animKey)
         this.row += this.rowChange
+        let rowInc = this.rowChange * squareY / moveFrames
         this.column += this.columnChange
+        let columnInc = this.columnChange * squareX / moveFrames
         if (this.column==boardColumns)
         {
             this.column -=1
+            columnInc = 0
         }
         else if (this.column==-1)
         {
             this.column = 0 
+            columnInc = 0
         }
+        console.log(this)
         this.timedEvent = this.scene.time.addEvent(
             {
-                delay: 100,
+                delay: 200,
                 repeat: moveFrames-1,
                 callback: function () {
-                    //unit.sprite.play(unit.typ)
-                    this.y += this.rowChange * squareY / moveFrames
-                    this.x += this.columnChange * squareX / moveFrames
+                    this.y += rowInc
+                    this.x += columnInc
                 },
                 callbackScope: this,
             }
@@ -375,7 +382,6 @@ class Square extends Phaser.GameObjects.Container
 
             // Deal damage
             let c = this.contents
-            console.log(this.contents)
 
             for (let unit of c)
             {
@@ -401,7 +407,6 @@ class Square extends Phaser.GameObjects.Container
         if (this.contents.length==1)
         {
             let unit = this.contents[0]
-            console.log(unit)
             if (unit.row == boardRows-1) {
                 const combatAnim = new CombatAnimation(
                     this.board.scene, this.board, this.x, this.y)
@@ -476,7 +481,6 @@ class Board extends Phaser.GameObjects.Container
                     unit.move()
                     movingUnits.push(unit)                        
                     this.mapData[unit.row][unit.column].nextContents.push(unit)
-                    //unit.update()
                 }
             }
         }
@@ -518,17 +522,14 @@ class Board extends Phaser.GameObjects.Container
         {
             return
         }
-        console.log(units_def)
         for (let c=0; c<boardColumns; c++)
         {
             let abbrev = units_def[this.turn][c]
-            console.log(c+' '+abbrev)
             if (abbrev=='.')
             {
                 continue
             }
             let typ = unitAbbrevs[units_def[0][c]]
-            console.log('turn '+this.turn+' '+c+' '+typ)
             this.addUnit(typ, c, 0, 1)
         } 
         this.turn +=1
@@ -604,9 +605,9 @@ class Items extends Phaser.GameObjects.Container
             for (let i=0; i<num; i++)
             { 
                 let item = new Item(this.scene, this, typ)
-                console.log('Playing')
-                console.log(item)
-                item.play(item.animKey)
+                //console.log('Playing')
+                //console.log(item)
+                //item.play(item.animKey)
                 item.setVisible(false)
                 this.add(item)
             }
@@ -685,30 +686,33 @@ class Play extends Phaser.Scene
         this.anims.create({
             key:'unit_soldier_down_anim',
             frames: 'unit_soldier_down',
-            frameRate: 5,
-            repeat: -1
+            frameRate: unitFrameRate,
+            repeat: 1
 
         })
         this.anims.create({
             key:'unit_soldier_up_anim',
             frames: 'unit_soldier_up',
-            frameRate: 5,
-            repeat: -1
+            duration: unitAnimationDuration,
+            frameRate: unitFrameRate,
+            repeat: 1
 
         })
         this.anims.create({
             key:'unit_shield_up_anim',
             frames: 'unit_shield_up',
-            frameRate: 5,
-            repeat: 2
+            duration: unitAnimationDuration,
+            frameRate: unitFrameRate,
+            repeat: 1
 
         })
 
         this.anims.create({
             key:'unit_snake_up_anim',
             frames: 'unit_snake_up',
-            frameRate: 5,
-            repeat: 2
+            duration: unitAnimationDuration,
+            frameRate: unitFrameRate,
+            repeat: 1
 
         })
 
@@ -764,15 +768,8 @@ class Play extends Phaser.Scene
         this.scene.restart()
     }
 
-    animate(gameObject,animKey)
-    {
-        gameObject.play(animKey)
-    }
-
     performActions()
     {
-        console.log('this ')
-        console.log(this)
         chargeButton.setVisible(false)
         board.updateMap()
         items.fill()
