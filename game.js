@@ -327,6 +327,22 @@ class Unit extends Phaser.GameObjects.Container
         this.column += this.columnChange
     }
 
+    move()
+    {
+        this.timedEvent = this.scene.time.addEvent(
+            {
+                delay: 100,
+                repeat: moveFrames-1,
+                callback: function () {
+                    //unit.sprite.play(unit.typ)
+                    this.y += this.rowChange * squareY / moveFrames
+                    this.x += this.columnChange * squareX / moveFrames
+                },
+                callbackScope: this,
+            }
+        )
+    }
+
     takeDamage(attack)
     {
         if (this.shield>attack)
@@ -558,19 +574,10 @@ class Board extends Phaser.GameObjects.Container
             }
         }
 
-        this.timedEvent = this.scene.time.addEvent(
-            {
-                delay: 100,
-                repeat: moveFrames-1,
-                callback: function () {
-                    for (let unit of movingUnits) {
-                        //unit.sprite.play(unit.typ)
-                        unit.y += unit.rowChange * squareY / moveFrames
-                        unit.x += unit.columnChange * squareX / moveFrames
-                    }
-                },
-                callbackScope: this,
-            })
+        for (let unit of movingUnits) 
+        {
+            unit.move()
+        }
 
         // Update square contents
         for (let r of this.mapData)
