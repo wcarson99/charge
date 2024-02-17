@@ -109,15 +109,15 @@ const levels = [
 
 class Player 
 {
-    constructor(board, x, y, defn)
+    constructor(scene, x, y, defn)
     {
-        this.board = board;
+        this.board = scene;
         this.hp = defn.hp
         this.attack = defn.attack
         this.shield = defn.shield
         this.rowChange = defn.rowChange
-        this.container = board.scene.add.container(x,y)
-        this.hpText = board.scene.add.text(
+        this.container = scene.add.container(x,y)
+        this.hpText = scene.add.text(
             0,0,'', 
             { fontSize: '32px', fontFamily:'Verdana', color:defn['color']})
         this.hpText.setOrigin(0.5,0)
@@ -128,7 +128,7 @@ class Player
     takeDamage(attack)
     {
         this.hpText.setTint('0x808080')
-        this.board.scene.time.addEvent(
+        this.scene.time.addEvent(
             { delay: 1000,
               callback: function() {this.hpText.clearTint()},
               callbackScope: this,
@@ -428,18 +428,10 @@ class Square extends Phaser.GameObjects.Container
     {
         const unit = new Unit(this.scene, this, 0, typ, c, r, rowChange)
         this.contents.push(unit)
-        this.add(unit)
-        this.board.add(unit)
     }
 
     resolveCombat()
     {
-        /*
-        if (this.contents.length==1)
-        {
-            return
-        }
-        */
         if (this.contents.length>1)
         {
             const combatAnim = new CombatAnimation(
@@ -481,12 +473,12 @@ class Square extends Phaser.GameObjects.Container
             if (unit.row == boardRows-1) {
                 const combatAnim = new CombatAnimation(
                     this.board.scene, this.board, this.x, this.y)
-                unit.fightPlayer(this.board.human)
+                unit.fightPlayer(human)
             }
             else if (unit.row == 0) {
                 const combatAnim = new CombatAnimation(
                     this.board.scene, this.board, this.x, this.y)
-                unit.fightPlayer(this.board.computer)
+                unit.fightPlayer(computer)
             }
             if (unit.hp<=0) {
                 unit.destroy()
@@ -513,9 +505,6 @@ class Board extends Phaser.GameObjects.Container
         this.unitIndex = 0
         this.turn = 0
         
-        this.computer = new Player(this, screenX/2,20, this.level.players.computer)
-        this.human = new Player(this, screenX/2, 850, this.level.players.human)
-
         this.group = scene.physics.add.group()
         let width = columns*squareX
         let height = columns*squareY
@@ -556,8 +545,8 @@ class Board extends Phaser.GameObjects.Container
                 while (contents.length > 0) {
                     let unit = contents.pop()
                     unit.move()
-                        movingUnits.push(unit)                        
-                        this.mapData[unit.row][unit.column].nextContents.push(unit)
+                    movingUnits.push(unit)                        
+                    this.mapData[unit.row][unit.column].nextContents.push(unit)
                     //unit.update()
                 }
             }
@@ -581,6 +570,7 @@ class Board extends Phaser.GameObjects.Container
                 square.resolveCombat()
             }
         }
+
         this.addComputerUnits()
     }
 
@@ -674,6 +664,10 @@ class Play extends Phaser.Scene
         let levelNum = 0
         let levelDefn = levels[levelNum]
         board = new Board(this, boardRows, boardColumns,0)
+
+        computer = new Player(this, screenX/2,20, levelDefn.players.computer)
+        human = new Player(this, screenX/2, 850, levelDefn.players.human)
+
         console.log('boardXOffset '+boardXOffset)
         items = new Items(this, boardXOffset,730, levelDefn['players']['human']['items'])
 
@@ -768,8 +762,8 @@ class Play extends Phaser.Scene
         board.updateMap()
         items.fill()
 
-        let human = board.human
-        let computer = board.computer
+        //let human = board.human
+        //let computer = board.computer
         human.update()
         computer.update()
         if (human.hp<=0 || computer.hp<=0)
