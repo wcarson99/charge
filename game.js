@@ -179,7 +179,7 @@ class Player
     }
 }
 
-class Item extends Phaser.GameObjects.Image
+class Item extends Phaser.GameObjects.Sprite
 {   
     constructor(scene, items, typ)
     {
@@ -187,8 +187,8 @@ class Item extends Phaser.GameObjects.Image
         this.items = items
         this.typ = typ
         this.newSquare = null
+        this.animKey = typ+'_up_anim'
         
-        this.setData('newSquare',undefined)
         this.setDisplaySize(squareX,squareY)
         this.setSize(squareX,squareY)
         this.setInteractive({ draggable: true})
@@ -513,20 +513,17 @@ class Square extends Phaser.GameObjects.Container
 
 class Board extends Phaser.GameObjects.Container
 {
-    constructor(scene, rows, columns, levelNum)
+    constructor(scene, x, y, levelNum)
     {
-        super(scene,boardXOffset, boardYOffset)
+        super(scene,x, y)
 
-        this.scene = scene;
-        this.rows = rows;
-        this.columns = columns
         this.level = levels[levelNum]
         this.unitIndex = 0
         this.turn = 0
         
         this.group = scene.physics.add.group()
-        let width = columns*squareX
-        let height = columns*squareY
+        let width = boardRows*squareX
+        let height = boardColumns*squareY
         this.setSize(width, height)
         this.mapData = []
         this.scene.add.existing(this)
@@ -657,7 +654,7 @@ class Play extends Phaser.Scene
         let levelNum = 0
         let levelDefn = levels[levelNum]
 
-        board = new Board(this, boardRows, boardColumns,0)
+        board = new Board(this, boardXOffset, boardYOffset,0)
         computer = new Player(this, screenX/2,20, levelDefn.players.computer)
         human = new Player(this, screenX/2, 850, levelDefn.players.human)
         items = new Items(this, boardXOffset,730, levelDefn['players']['human']['items'])
@@ -679,7 +676,7 @@ class Play extends Phaser.Scene
             key:'unit_soldier_up_anim',
             frames: 'unit_soldier_up',
             frameRate: 5,
-            repeat: 2
+            repeat: -1
 
         })
         this.anims.create({
@@ -710,6 +707,7 @@ class Play extends Phaser.Scene
 
         this.input.on('drag', function (pointer, gameObject, dragX, dragY) {
             gameObject.setPosition(dragX, dragY)
+            gameObject.play(gameObject.animKey)
         })
 
         this.input.on('dragend', function (pointer, item) {
@@ -720,7 +718,6 @@ class Play extends Phaser.Scene
             }
             else
             {
-                //item.setVisible(false)
                 items.remove(item)
                 item.newSquare.clearTint()
                 board.addUnit(item.typ, item.newSquare.column, boardRows-1, -1)
@@ -735,6 +732,11 @@ class Play extends Phaser.Scene
     {
         console.log('Restarting')
         this.scene.restart()
+    }
+
+    animate(gameObject,animKey)
+    {
+        gameObject.play(animKey)
     }
 
     performActions()
@@ -773,14 +775,17 @@ class Play extends Phaser.Scene
     }
     onTimer()
     {
-        $.ajax({
-            dataType: "json",
-            url: "https://worldtimeapi.org/api/timezone/Etc/UTC",
-            success: function (data) {
-                let timeStr = data['datetime'].split('T')[1].split('.')[0]
-                //timeText.setText('time: ' + timeStr)
-            }
-        });
+        if (false)
+        {
+            $.ajax({
+                dataType: "json",
+                url: "https://worldtimeapi.org/api/timezone/Etc/UTC",
+                success: function (data) {
+                    let timeStr = data['datetime'].split('T')[1].split('.')[0]
+                    //timeText.setText('time: ' + timeStr)
+                }
+            });    
+        }
         if (false) {
 
             console.log('Before')
@@ -814,7 +819,7 @@ const config = {
         arcade: {
             //gravity: { y: 300 },
             // If you want to see hit boxes
-            //debug: true
+            debug: true
         }
     },
     pixelArt: true,
