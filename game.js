@@ -7,7 +7,7 @@ For Glitch - https://en.flossmanuals.net/phaser-game-making-in-glitch/_full/
 
 class CombatAnimation extends Phaser.GameObjects.Sprite
 {
-    constructor(scene, container, x, y)
+    constructor(scene, board, x, y)
     {
         super(scene,x,y,'combat')
 
@@ -17,7 +17,7 @@ class CombatAnimation extends Phaser.GameObjects.Sprite
             this.destroy()
         }, this)
         scene.add.existing(this)
-        container.add(this)
+        board.add(this)
     }
 }
 
@@ -302,6 +302,7 @@ class Unit extends Phaser.GameObjects.Container
         this.statusText.setOrigin(0,0)
         this.add([this.sprite, this.statusText])
         this.scene.add.existing(this)
+        square.board.add(this)
         //this.sprite.play(imageName+'_anim')
 
     }
@@ -325,6 +326,14 @@ class Unit extends Phaser.GameObjects.Container
     {
         this.row += this.rowChange
         this.column += this.columnChange
+        if (this.column==boardColumns)
+        {
+            this.column -=1
+        }
+        else if (this.column==-1)
+        {
+            this.column = 0 
+        }
         this.timedEvent = this.scene.time.addEvent(
             {
                 delay: 100,
@@ -376,38 +385,50 @@ class Unit extends Phaser.GameObjects.Container
     }
 }
 
-class Square extends Phaser.GameObjects.Image
+class Square extends Phaser.GameObjects.Container
 {
-    constructor(board, index, type, c, r)
+    constructor(board, index, typ, c, r)
     {
-        super(board.scene,c*squareX,r*squareY,type)
+        super(board.scene,c*squareX,r*squareY)
+        this.scene.add.existing(this);
 
         this.scene = board.scene
         this.board = board
         this.index = index
         this.column = c
         this.row = r
-        this.setPosition(c*squareX,r*squareY)
         this.contents = []
         this.nextContents = []
-        this.setDisplaySize(squareX,squareY)
-        this.setSize(squareX,squareY)
-        this.setOrigin(0,0)
-        this.setData('obj', this)
-        this.on('pointerover', (pointer) => this.setTint(0x808080), this)
-        this.on('pointerout', (pointer) => this.clearTint(), this)
-        this.setInteractive()
-
-        this.scene.add.existing(this);
+        let image = board.scene.add.image(0,0,typ)
+        image.setDisplaySize(squareX,squareY)
+        image.setSize(squareX,squareY)
+        image.setOrigin(0,0)
+        image.setData('obj', this)
+        image.on('pointerover', (pointer) => this.setTint(0x808080), this)
+        image.on('pointerout', (pointer) => this.clearTint(), this)
+        image.setInteractive()
+        this.image = image
+        this.add(this.image)
 
         board.add(this)
         board.group.add(this) 
+    }
+
+    setTint(value) 
+    {
+        this.image.setTint(value)
+    }
+
+    clearTint()
+    {
+        this.image.clearTint()
     }
 
     addUnit(typ, c, r, rowChange)
     {
         const unit = new Unit(this.scene, this, 0, typ, c, r, rowChange)
         this.contents.push(unit)
+        this.add(unit)
         this.board.add(unit)
     }
 
@@ -476,8 +497,6 @@ class Square extends Phaser.GameObjects.Image
                 unit.update()                
             }
         }
-
-
     }
 }
 
