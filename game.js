@@ -413,10 +413,12 @@ class Square extends Phaser.GameObjects.Image
 
     resolveCombat()
     {
+        /*
         if (this.contents.length==1)
         {
             return
         }
+        */
         if (this.contents.length>1)
         {
             const combatAnim = new CombatAnimation(
@@ -453,8 +455,29 @@ class Square extends Phaser.GameObjects.Image
         }
         if (this.contents.length==1)
         {
-            this.contents[0].update()
+            let unit = this.contents[0]
+            console.log(unit)
+            if (unit.row == boardRows-1) {
+                const combatAnim = new CombatAnimation(
+                    this.board.scene, this.board, this.x, this.y)
+                unit.fightPlayer(this.board.human)
+            }
+            else if (unit.row == 0) {
+                const combatAnim = new CombatAnimation(
+                    this.board.scene, this.board, this.x, this.y)
+                unit.fightPlayer(this.board.computer)
+            }
+            if (unit.hp<=0) {
+                unit.destroy()
+                this.contents = []
+            }
+            else
+            {
+                unit.update()                
+            }
         }
+
+
     }
 }
 
@@ -514,21 +537,8 @@ class Board extends Phaser.GameObjects.Container
                 while (contents.length > 0) {
                     let unit = contents.pop()
                     unit.move()
-                    if (unit.row == boardRows-1) {
-                        unit.fightPlayer(this.human)
-                    }
-                    else if (unit.row == 0) {
-                        unit.fightPlayer(this.computer)
-                    }
-                    if (unit.hp>0)
-                    {
                         movingUnits.push(unit)                        
                         this.mapData[unit.row][unit.column].nextContents.push(unit)
-                    }
-                    else
-                    {
-                        unit.destroy()
-                    }
                     //unit.update()
                 }
             }
