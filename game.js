@@ -60,10 +60,11 @@ class CombatAnimation extends Phaser.GameObjects.Sprite
 }
 
 const cGold = '#aaaa00'
+const cLightGold = '#aaaa55'
 const cBlue = '#5555ff'
 const cDarkBlue = '#0000aa'
 const cGreen = '#00aa00'
-const cDarkGreen = '#005500'
+const cDarkGreen = '#005530'
 const cLightGreen = '#00aa55'
 const cWhite = '#ffffff'
 const cBlack = '#000000'
@@ -76,14 +77,14 @@ const cInventory = cMagenta
 
 const screenX = 400
 const screenY = 900
-const squareX = 60
-const squareY = 60
-const boardRows = 11
+const squareX =64
+const squareY = 64
+const boardRows = 9
 const boardColumns = 6
 const boardCenterX = squareX*boardColumns/2
 const boardCenterY = squareY*boardRows/2
 const boardXOffset = (screenX-squareX*boardColumns)/2
-const boardYOffset = 60
+const boardYOffset = 80
 const numItems = 6
 
 const unitFrameRate = 4
@@ -129,8 +130,6 @@ const levels = [
                 "......",
                 "......",
                 "......",
-                "......",
-                "......",
                 "......"
             ],
         players:
@@ -145,7 +144,7 @@ const levels = [
                      "s.s.s."
                     ],
                 rowChange: 1,
-                color: '#3000f0'
+                color: cBlue,
             },
             'human':
             {
@@ -157,7 +156,7 @@ const levels = [
                         { typ:'unit_soldier', num:2},
                         { typ:'unit_shield', num:3}],
                 rowChange: -1,
-                color: '#fb0000'
+                color: cGold,
             }
         }
     }
@@ -175,7 +174,7 @@ class Player
         this.container = scene.add.container(x,y)
         this.hpText = scene.add.text(
             0,0,'', 
-            { fontSize: '32px', fontFamily:'Verdana', color:defn['color']})
+            { fontSize: 40, fontFamily:'Verdana', color:defn['color']})
         this.hpText.setOrigin(0.5,0)
         this.container.add(this.hpText)
         this.update()
@@ -691,6 +690,7 @@ class Welcome extends Phaser.Scene
         /*
         https://www.hostinger.com/tutorials/best-html-web-fonts#:~:text=Web%2Dsafe%20fonts%20are%20fonts,Times%20New%20Roman%2C%20and%20Helvetica.
         */
+        this.scene.start('Play')
         const welcome = [
             "Welcome to Attack!",
             "",
@@ -724,12 +724,12 @@ class Play extends Phaser.Scene
     
     preload ()
     {
-        this.load.image('button_charge', 'assets/button_charge.png');
+        this.load.image('button_charge', 'assets/button_charge2.png');
         this.load.spritesheet('combat', 'assets/combat.png',animConfig)
 
         this.load.image('square_empty', 'assets/square_empty.png');
         this.load.spritesheet('unit_soldier_up', 'assets/unit_soldier_up.png',
-            animConfig)
+        { frameWidth: 32, frameHeight: 32 })
 
         this.load.spritesheet('unit_soldier_down', 'assets/unit_soldier_down.png',
             { frameWidth: 32, frameHeight: 32 })
@@ -767,7 +767,7 @@ class Play extends Phaser.Scene
             frames: 'unit_soldier_up',
             duration: unitAnimationDuration,
             frameRate: unitFrameRate,
-            repeat: 1
+            repeat: 0
 
         })
         this.anims.create({
@@ -775,7 +775,7 @@ class Play extends Phaser.Scene
             frames: 'unit_shield_up',
             duration: unitAnimationDuration,
             frameRate: unitFrameRate,
-            repeat: 1
+            repeat: 0
 
         })
 
@@ -790,11 +790,11 @@ class Play extends Phaser.Scene
 
         board = new Board(this, boardXOffset, boardYOffset,0)
         computer = new Player(this, screenX/2,20, levelDefn.players.computer)
-        human = new Player(this, screenX/2, 850, levelDefn.players.human)
-        items = new Inventory(this, boardXOffset,730, levelDefn['players']['human']['items'])
+        human = new Player(this, screenX/2, 830, levelDefn.players.human)
+        items = new Inventory(this, boardXOffset,670, levelDefn['players']['human']['items'])
 
-        chargeButton = new Button(this, screenX/2,830,'button_charge')
-        chargeButton.button.setDisplaySize(80,80)
+        chargeButton = new Button(this, screenX/2,790,'button_charge')
+        chargeButton.button.setDisplaySize(128,128)
         chargeButton.button.on('pointerup', (pointer) => this.performActions())
 
         restartButton = new Button(this, screenX/2, 830, 'white', 'RESTART')
