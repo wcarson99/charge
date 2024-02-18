@@ -3,6 +3,18 @@ Notes:
 
 For creating sprites - https://www.piskelapp.com/
 For Glitch - https://en.flossmanuals.net/phaser-game-making-in-glitch/_full/
+
+
+TODO:
+* tighten down animation
+* level selection screen
+* scoring based on remaining player and unit HPs
+* only 4 moves per turn
+* 3 good levels
+* fill out unit types
+* reset units to inventory
+
+EGA palett - https://en.wikipedia.org/wiki/Enhanced_Graphics_Adapter
 */
 
 class Button extends Phaser.GameObjects.Container
@@ -46,6 +58,13 @@ class CombatAnimation extends Phaser.GameObjects.Sprite
         board.add(this)
     }
 }
+
+const cGold = '#aaaa00'
+const cBlue = '#5555ff'
+const cDarkGreen = '#005500'
+const cWhite = '#ffffff'
+
+const cBackground = cDarkGreen
 
 const screenX = 400
 const screenY = 900
@@ -576,7 +595,7 @@ class Item2 extends Phaser.GameObjects.Sprite
     }
 }
 
-class Items extends Phaser.GameObjects.Container
+class Inventory extends Phaser.GameObjects.Container
 {
     constructor(scene, x, y, defn)
     {
@@ -645,14 +664,59 @@ class Items extends Phaser.GameObjects.Container
     }
 }
 
+
+class Welcome extends Phaser.Scene
+{
+    constructor()
+    {
+        super('Welcome')
+    }
+
+    preload()
+    {
+        this.load.image('black','assets/black.png')
+        this.load.image('white','assets/white.png')
+    }
+
+    create()
+    {
+        /*
+        https://www.hostinger.com/tutorials/best-html-web-fonts#:~:text=Web%2Dsafe%20fonts%20are%20fonts,Times%20New%20Roman%2C%20and%20Helvetica.
+        */
+        const welcome = [
+            "Welcome to Attack!",
+            "",
+            "To play, drag units from the inventory",
+            "on the bottom of the screen",
+            "onto a square on the board.",
+            "",
+            "Click to start"
+        ]
+        const text = this.add.text(0,0,
+            welcome.join("\n"),
+            { 
+                align: "center",
+                fontFamily: "Geneva",
+                fontSize: 25,
+                color: cWhite,
+            })
+        this.input.on("pointerup", 
+            function (pointer) { this.scene.start('Play')},
+            this)
+    }
+}
+
 const animConfig = { frameWidth: 60, frameHeight: 60 }
 class Play extends Phaser.Scene
 {
+    constructor()
+    {
+        super('Play')
+    }
+    
     preload ()
     {
         this.load.image('button_charge', 'assets/button_charge.png');
-        this.load.image('black','assets/black.png')
-        this.load.image('white','assets/white.png')
         this.load.spritesheet('combat', 'assets/combat.png',animConfig)
 
         this.load.image('square_empty', 'assets/square_empty.png');
@@ -687,7 +751,7 @@ class Play extends Phaser.Scene
             key:'unit_soldier_down_anim',
             frames: 'unit_soldier_down',
             frameRate: unitFrameRate,
-            repeat: 1
+            repeat: 0
 
         })
         this.anims.create({
@@ -719,7 +783,7 @@ class Play extends Phaser.Scene
         board = new Board(this, boardXOffset, boardYOffset,0)
         computer = new Player(this, screenX/2,20, levelDefn.players.computer)
         human = new Player(this, screenX/2, 850, levelDefn.players.human)
-        items = new Items(this, boardXOffset,730, levelDefn['players']['human']['items'])
+        items = new Inventory(this, boardXOffset,730, levelDefn['players']['human']['items'])
 
         chargeButton = new Button(this, screenX/2,830,'button_charge')
         chargeButton.button.setDisplaySize(80,80)
@@ -839,7 +903,7 @@ const config = {
     type: Phaser.AUTO,
     width: 600,
     height: 900,
-    backgroundColor: '#4a6741',
+    backgroundColor: cBackground,
     parent: 'phaser-example',
     physics: {
         default: 'arcade',
@@ -850,7 +914,7 @@ const config = {
         }
     },
     pixelArt: true,
-    scene: Play
+    scene: [Welcome, Play]
 };
 
 const game = new Phaser.Game(config);
