@@ -61,10 +61,18 @@ class CombatAnimation extends Phaser.GameObjects.Sprite
 
 const cGold = '#aaaa00'
 const cBlue = '#5555ff'
+const cDarkBlue = '#0000aa'
+const cGreen = '#00aa00'
 const cDarkGreen = '#005500'
+const cLightGreen = '#00aa55'
 const cWhite = '#ffffff'
+const cBlack = '#000000'
+const cMagenta = '#aa55aa'
 
+const cText = cGreen
 const cBackground = cDarkGreen
+const cSquare = cLightGreen
+const cInventory = cMagenta
 
 const screenX = 400
 const screenY = 900
@@ -698,7 +706,7 @@ class Welcome extends Phaser.Scene
                 align: "center",
                 fontFamily: "Geneva",
                 fontSize: 25,
-                color: cWhite,
+                color: cText,
             })
         this.input.on("pointerup", 
             function (pointer) { this.scene.start('Play')},
@@ -724,7 +732,7 @@ class Play extends Phaser.Scene
             animConfig)
 
         this.load.spritesheet('unit_soldier_down', 'assets/unit_soldier_down.png',
-            { frameWidth: 30, frameHeight: 30 })
+            { frameWidth: 32, frameHeight: 32 })
         this.load.spritesheet('unit_shield_up', 'assets/unit_shield_up.png',
             animConfig)
         this.load.spritesheet('unit_snake_up', 'assets/unit_snake_up.png',
