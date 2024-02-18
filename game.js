@@ -91,6 +91,7 @@ const unitFrameRate = 4
 const unitAnimationDuration = 1000
 const moveFrames = 4
 buttonFontFamily = "Arial" //"Verdana"
+playerTextConfig = { fontSize: 40, fontFamily:'Courier', fontStyle:'Bold'} // 'Courier'
 const ZIGZAG = 'zigzag'
 
 let timeText;
@@ -173,8 +174,8 @@ class Player
         this.rowChange = defn.rowChange
         this.container = scene.add.container(x,y)
         this.hpText = scene.add.text(
-            0,0,'', 
-            { fontSize: 40, fontFamily:'Verdana', color:defn['color']})
+            0,0,'', playerTextConfig)
+        this.hpText.setColor(defn['color'])
         this.hpText.setOrigin(0.5,0)
         this.container.add(this.hpText)
         this.update()
@@ -203,8 +204,8 @@ class Player
     update() 
     {
         this.hpText.setText('HP '+('0'+this.hp).slice(-2)
-        +' AT '+('0'+this.attack).slice(-2)
-        +' SH '+('0'+this.shield).slice(-2))
+        +' A '+('0'+this.attack).slice(-2)
+        +' S '+('0'+this.shield).slice(-2))
     }
 }
 
@@ -725,6 +726,7 @@ class Play extends Phaser.Scene
     preload ()
     {
         this.load.image('button_charge', 'assets/button_charge2.png');
+        this.load.image('button_restart', 'assets/button_restart2.png');
         this.load.spritesheet('combat', 'assets/combat.png',animConfig)
 
         this.load.image('square_empty', 'assets/square_empty.png');
@@ -797,7 +799,8 @@ class Play extends Phaser.Scene
         chargeButton.button.setDisplaySize(128,128)
         chargeButton.button.on('pointerup', (pointer) => this.performActions())
 
-        restartButton = new Button(this, screenX/2, 830, 'white', 'RESTART')
+        restartButton = new Button(this, screenX/2, 800, 'button_restart')
+        restartButton.button.setDisplaySize(256,64)
         restartButton.setVisible(false)
         restartButton.button.on('pointerup', (pointer) => this.restart())
 
