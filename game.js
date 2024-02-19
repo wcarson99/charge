@@ -109,13 +109,15 @@ const square_types = {
 }
 
 const unitDefns = {
-    'unit_soldier': {'attack':1, 'hp':10, 'shield':0,'horizontal':'none'},
+    'unit_soldier': {'attack':1, 'hp':2, 'shield':3,'horizontal':'none'},
+    'unit_goblin': {'attack':2, 'hp':2, 'shield':1, 'horizontal':'none'},
     'unit_shield': {'attack':1, 'hp':10, 'shield':1, 'horizontal':'none'},
     'unit_snake': {'attack':5, 'hp':3, 'shield':0, 'horizontal':ZIGZAG}
 }
 
 const unitAbbrevs = {
     's':'unit_soldier',
+    'g':'unit_goblin',
     'S':'unit_shield'
 }
 
@@ -141,8 +143,8 @@ const levels = [
                 attack: 2,
                 shield: 2,
                 units:
-                    ["ssssss",
-                     "s.s.s."
+                    ["gggggg",
+                     "g.gg.g"
                     ],
                 rowChange: 1,
                 color: cBlue,
@@ -152,10 +154,13 @@ const levels = [
                 hp:10,
                 attack: 2,
                 shield: 2,
+                /*
                 items: [{ typ:'unit_soldier', num:4},
                         { typ:'unit_snake', num:2},
                         { typ:'unit_soldier', num:2},
                         { typ:'unit_shield', num:3}],
+                        */
+                items: "ssssSSss",
                 rowChange: -1,
                 color: cGold,
             }
@@ -584,25 +589,6 @@ class Item extends Phaser.GameObjects.Sprite
     }
 }
 
-class Item2 extends Phaser.GameObjects.Sprite
-{   
-    constructor(scene, typ)
-    {
-        super(scene,0,0,typ+'_up')
-        scene.add.existing(this)
-
-        this.items = items
-        this.typ = typ
-        this.newSquare = null
-        this.animKey = typ+'_up_anim'
-        
-        this.setDisplaySize(squareX,squareY)
-        this.setSize(squareX,squareY)
-        this.setInteractive({ draggable: true})
-        this.setOrigin(0,0)
-    }
-}
-
 class Inventory extends Phaser.GameObjects.Container
 {
     constructor(scene, x, y, defn)
@@ -625,20 +611,14 @@ class Inventory extends Phaser.GameObjects.Container
 
     createItems(defn)
     {   
-        for (let itemDefn of defn)
-        {
-            let typ = itemDefn['typ']
-            let num = itemDefn['num']
-            for (let i=0; i<num; i++)
-            { 
-                let item = new Item(this.scene, this, typ)
-                //console.log('Playing')
-                //console.log(item)
-                //item.play(item.animKey)
-                item.setVisible(false)
-                this.add(item)
-            }
-        }
+       for (let i=0; i<defn.length;i++)
+       {
+            let typ = unitAbbrevs[defn[i]]
+            //console.log('Adding item '+typ)
+            let item = new Item(this.scene, this, typ)
+            item.setVisible(false)
+            this.add(item)
+       }
         this.fill()
     }
 
@@ -733,6 +713,8 @@ class Play extends Phaser.Scene
         this.load.spritesheet('unit_soldier_up', 'assets/unit_soldier_up.png',
         { frameWidth: 32, frameHeight: 32 })
 
+        this.load.spritesheet('unit_goblin_down', 'assets/unit_goblin_down.png',
+            { frameWidth: 32, frameHeight: 32 })
         this.load.spritesheet('unit_soldier_down', 'assets/unit_soldier_down.png',
             { frameWidth: 32, frameHeight: 32 })
         this.load.spritesheet('unit_shield_up', 'assets/unit_shield_up.png',
@@ -762,7 +744,12 @@ class Play extends Phaser.Scene
             frames: 'unit_soldier_down',
             frameRate: unitFrameRate,
             repeat: 0
-
+        })
+        this.anims.create({
+            key:'unit_goblin_down_anim',
+            frames: 'unit_goblin_down',
+            frameRate: unitFrameRate,
+            repeat: 0
         })
         this.anims.create({
             key:'unit_soldier_up_anim',
