@@ -14,7 +14,7 @@ TODO:
 * fill out unit types
 * reset units to inventory
 
-EGA palett - https://en.wikipedia.org/wiki/Enhanced_Graphics_Adapter
+EGA palette - https://en.wikipedia.org/wiki/Enhanced_Graphics_Adapter
 */
 
 class Button extends Phaser.GameObjects.Container
@@ -63,8 +63,8 @@ const cGold = '#aaaa00'
 const cLightGold = '#aaaa55'
 const cBlue = '#5555ff'
 const cDarkBlue = '#0000aa'
-const cGreen = '#00aa00'
-const cDarkGreen = '#005530'
+const cGreen = '#008844'
+const cDarkGreen = '#003311'
 const cLightGreen = '#00aa55'
 const cWhite = '#ffffff'
 const cBlack = '#000000'
@@ -85,6 +85,7 @@ const boardCenterX = squareX*boardColumns/2
 const boardCenterY = squareY*boardRows/2
 const boardXOffset = (screenX-squareX*boardColumns)/2
 const boardYOffset = 80
+const playerX = boardCenterX
 const numItems = 6
 
 const unitFrameRate = 4
@@ -92,6 +93,7 @@ const unitAnimationDuration = 1000
 const moveFrames = 4
 buttonFontFamily = "Arial" //"Verdana"
 playerTextConfig = { fontSize: 40, fontFamily:'Courier', fontStyle:'Bold'} // 'Courier'
+winnerTextConfig = {fontSize: '80px', align:'center',fontFamily:'Courier', fontStyle:'Bold'}
 const ZIGZAG = 'zigzag'
 
 let timeText;
@@ -109,16 +111,16 @@ const square_types = {
 }
 
 const unitDefns = {
-    'unit_soldier': {'attack':1, 'hp':2, 'shield':3,'horizontal':'none'},
+    'unit_knight': {'attack':1, 'hp':2, 'shield':3,'horizontal':'none'},
     'unit_goblin': {'attack':2, 'hp':2, 'shield':1, 'horizontal':'none'},
-    'unit_shield': {'attack':1, 'hp':10, 'shield':1, 'horizontal':'none'},
+    'unit_golem': {'attack':3, 'hp':10, 'shield':1, 'horizontal':'none'},
     'unit_snake': {'attack':5, 'hp':3, 'shield':0, 'horizontal':ZIGZAG}
 }
 
 const unitAbbrevs = {
-    's':'unit_soldier',
+    'k':'unit_knight',
     'g':'unit_goblin',
-    'S':'unit_shield'
+    'G':'unit_golem'
 }
 
 const levels = [
@@ -154,13 +156,7 @@ const levels = [
                 hp:10,
                 attack: 2,
                 shield: 2,
-                /*
-                items: [{ typ:'unit_soldier', num:4},
-                        { typ:'unit_snake', num:2},
-                        { typ:'unit_soldier', num:2},
-                        { typ:'unit_shield', num:3}],
-                        */
-                items: "ssssSSss",
+                items: "kkkkkkGGG",
                 rowChange: -1,
                 color: cGold,
             }
@@ -250,14 +246,17 @@ class Unit extends Phaser.GameObjects.Container
         this.setPosition(column*squareX, row*squareY)
         this.setSize(squareX, squareY)
 
+        let textColor = cGreen
         let imageName = typ
         if (rowChange>0)
         {
             imageName += '_down'
+            textColor = cWhite
         }
         else
         {
             imageName += '_up'
+            textColor = cBlack
         }
         this.animKey = imageName+'_anim'
         
@@ -266,7 +265,7 @@ class Unit extends Phaser.GameObjects.Container
             .setDisplaySize(squareX,squareY)
         )
         this.statusText = scene.add.text(5,48, this.statusString(), 
-            { fontSize: '10px', fontFamily:buttonFontFamily, color:'White'})
+            { fontSize: '10px', fontFamily:buttonFontFamily, color:textColor})
         this.statusText.setOrigin(0,0)
         this.add([this.sprite, this.statusText])
         this.scene.add.existing(this)
@@ -371,7 +370,17 @@ class Square extends Phaser.GameObjects.Container
         this.row = r
         this.contents = []
         this.nextContents = []
-        let image = board.scene.add.image(0,0,typ)
+        let imageName = typ
+        if ((r+c) % 2==0)
+        {
+            imageName = imageName+'_even'
+        }
+        else
+        {
+            imageName = imageName+'_odd'
+        }
+        console.log(imageName)
+        let image = board.scene.add.image(0,0,imageName)
         image.setDisplaySize(squareX,squareY)
         image.setSize(squareX,squareY)
         image.setOrigin(0,0)
@@ -662,8 +671,8 @@ class Welcome extends Phaser.Scene
 
     preload()
     {
-        this.load.image('black','assets/black.png')
-        this.load.image('white','assets/white.png')
+        this.load.image('black','black.png')
+        this.load.image('white','white.png')
     }
 
     create()
@@ -705,21 +714,20 @@ class Play extends Phaser.Scene
     
     preload ()
     {
-        this.load.image('button_charge', 'assets/button_charge2.png');
-        this.load.image('button_restart', 'assets/button_restart2.png');
-        this.load.spritesheet('combat', 'assets/combat.png',animConfig)
+        this.load.image('button_charge', 'button_charge2.png')
+        this.load.image('button_restart', 'button_restart2.png')
+        this.load.spritesheet('combat', 'combat.png',animConfig)
 
-        this.load.image('square_empty', 'assets/square_empty.png');
-        this.load.spritesheet('unit_soldier_up', 'assets/unit_soldier_up.png',
+        this.load.image('square_empty_even', 'square_empty_even.png')
+        this.load.image('square_empty_odd', 'square_empty_odd.png')
+        this.load.spritesheet('unit_knight_up', 'unit_knight_up.png',
         { frameWidth: 32, frameHeight: 32 })
 
-        this.load.spritesheet('unit_goblin_down', 'assets/unit_goblin_down.png',
+        this.load.spritesheet('unit_goblin_down', 'unit_goblin_down.png',
             { frameWidth: 32, frameHeight: 32 })
-        this.load.spritesheet('unit_soldier_down', 'assets/unit_soldier_down.png',
-            { frameWidth: 32, frameHeight: 32 })
-        this.load.spritesheet('unit_shield_up', 'assets/unit_shield_up.png',
-            animConfig)
-        this.load.spritesheet('unit_snake_up', 'assets/unit_snake_up.png',
+        this.load.spritesheet('unit_golem_up', 'unit_golem_up.png',
+        { frameWidth: 32, frameHeight: 32 })
+        this.load.spritesheet('unit_snake_up', 'unit_snake_up.png',
             { frameWidth: 30, frameHeight: 30 })
 
         }
@@ -740,28 +748,22 @@ class Play extends Phaser.Scene
             repeat: 2
         })
         this.anims.create({
-            key:'unit_soldier_down_anim',
-            frames: 'unit_soldier_down',
-            frameRate: unitFrameRate,
-            repeat: 0
-        })
-        this.anims.create({
             key:'unit_goblin_down_anim',
             frames: 'unit_goblin_down',
             frameRate: unitFrameRate,
             repeat: 0
         })
         this.anims.create({
-            key:'unit_soldier_up_anim',
-            frames: 'unit_soldier_up',
+            key:'unit_knight_up_anim',
+            frames: 'unit_knight_up',
             duration: unitAnimationDuration,
             frameRate: unitFrameRate,
             repeat: 0
 
         })
         this.anims.create({
-            key:'unit_shield_up_anim',
-            frames: 'unit_shield_up',
+            key:'unit_golem_up_anim',
+            frames: 'unit_golem_up',
             duration: unitAnimationDuration,
             frameRate: unitFrameRate,
             repeat: 0
@@ -782,11 +784,11 @@ class Play extends Phaser.Scene
         human = new Player(this, screenX/2, 830, levelDefn.players.human)
         items = new Inventory(this, boardXOffset,670, levelDefn['players']['human']['items'])
 
-        chargeButton = new Button(this, screenX/2,790,'button_charge')
-        chargeButton.button.setDisplaySize(128,128)
+        chargeButton = new Button(this, playerX,790,'button_charge')
+        chargeButton.button.setDisplaySize(256,128)
         chargeButton.button.on('pointerup', (pointer) => this.performActions())
 
-        restartButton = new Button(this, screenX/2, 800, 'button_restart')
+        restartButton = new Button(this, playerX, 790, 'button_restart')
         restartButton.button.setDisplaySize(256,64)
         restartButton.setVisible(false)
         restartButton.button.on('pointerup', (pointer) => this.restart())
@@ -840,8 +842,8 @@ class Play extends Phaser.Scene
         computer.update()
         if (human.hp<=0 || computer.hp<=0)
         {
-            let text = this.add.text(300,400,'', 
-                {fontSize: '80px', align:'center'}).setOrigin(0.5)
+            let text = this.add.text(boardCenterX,400,'', 
+                winnerTextConfig).setOrigin(0.5)
             if (human.hp==computer.hp)
             {
                 text.setText("No\nwinner!")
