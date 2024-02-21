@@ -88,9 +88,10 @@ const boardYOffset = 80
 const playerX = boardCenterX
 const numItems = 6
 
-const unitFrameRate = 4
+const unitFrameRate = 5 
 const unitAnimationDuration = 1000
-const moveFrames = 4
+const moveFrames = 5
+
 buttonFontFamily = "Arial" //"Verdana"
 playerTextConfig = { fontSize: 40, fontFamily:'Courier', fontStyle:'Bold'} // 'Courier'
 winnerTextConfig = {fontSize: '80px', align:'center',fontFamily:'Courier', fontStyle:'Bold'}
@@ -155,8 +156,8 @@ const levels = [
             {
                 hp:10,
                 attack: 2,
-                shield: 2,
-                items: "kkkkkkGGG",
+                shield: 2,  
+                items: "kGkkGkkk",
                 rowChange: -1,
                 color: cGold,
             }
@@ -264,6 +265,7 @@ class Unit extends Phaser.GameObjects.Container
             .setOrigin(0,0)
             .setDisplaySize(squareX,squareY)
         )
+        this.sprite.on("animationcomplete", (pointer) => this.sprite.setFrame(0), this)
         this.statusText = scene.add.text(5,48, this.statusString(), 
             { fontSize: '10px', fontFamily:buttonFontFamily, color:textColor})
         this.statusText.setOrigin(0,0)
@@ -281,6 +283,12 @@ class Unit extends Phaser.GameObjects.Container
 
     update()
     {
+        // TODO: This shouldn't be needed
+        console.log("setting frame")
+        //this.sprite.asetFrame(0)
+        this.sprite.anims.currentAnim.getFrameByProgress(0)
+        console.log(this)
+
         this.statusText.setText(this.statusString())
         if (this.horizontal==ZIGZAG)
         {
@@ -317,6 +325,7 @@ class Unit extends Phaser.GameObjects.Container
                 callbackScope: this,
             }
         )
+
     }
 
     takeDamage(attack)
@@ -379,7 +388,6 @@ class Square extends Phaser.GameObjects.Container
         {
             imageName = imageName+'_odd'
         }
-        console.log(imageName)
         let image = board.scene.add.image(0,0,imageName)
         image.setDisplaySize(squareX,squareY)
         image.setSize(squareX,squareY)
@@ -607,10 +615,10 @@ class Inventory extends Phaser.GameObjects.Container
 
         this.defn = defn
 
-        const image = scene.add.image(0,0,'white')
-        image.setDisplaySize(numItems*squareX,squareY)
+        const image = scene.add.image(0,0,'black')
+        image.setDisplaySize(numItems*squareX,squareY+2)
         image.setOrigin(0,0)
-        image.setTint(0x008000)
+        //image.setTint(0x008000)
         this.add(image) 
 
         this.group = scene.physics.add.group()
@@ -750,6 +758,7 @@ class Play extends Phaser.Scene
         this.anims.create({
             key:'unit_goblin_down_anim',
             frames: 'unit_goblin_down',
+            duration: unitAnimationDuration,
             frameRate: unitFrameRate,
             repeat: 0
         })
