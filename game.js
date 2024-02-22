@@ -12,7 +12,12 @@ TODO:
 * only 4 moves per turn
 * 3 good levels
 * fill out unit types
+* combat on move completion
+* cleanup unit text
+* magnify unit on hover
+* consistent fonts
 * reset units to inventory
+* image load issues
 
 EGA palette - https://en.wikipedia.org/wiki/Enhanced_Graphics_Adapter
 */
@@ -25,7 +30,7 @@ class Button extends Phaser.GameObjects.Container
 
         const button = this.scene.add.image(0, 0, key).setInteractive()
         const buttonText = this.scene.add.text(0, 0, text, 
-            { fontSize: '28px', color: fontColor , fontFamily:buttonFontFamily})
+            buttonConfig)
         button.setDisplaySize(buttonText.width,30)
             
         Phaser.Display.Align.In.Center(buttonText, button);
@@ -50,6 +55,7 @@ class CombatAnimation extends Phaser.GameObjects.Sprite
         super(scene,x,y,'combat')
 
         this.setOrigin(0,0)
+        this.setDisplaySize(squareX,squareY)
         this.play('combat_anim')        
         this.on('animationcomplete', function() {
             this.destroy()
@@ -75,16 +81,18 @@ const cBackground = cDarkGreen
 const cSquare = cLightGreen
 const cInventory = cMagenta
 
-const screenX = 400
+const screenX = 450
 const screenY = 900
 const squareX =64
 const squareY = 64
 const boardRows = 9
 const boardColumns = 6
-const boardCenterX = squareX*boardColumns/2
+const boardWidth = squareX*boardColumns
+const boardCenterX = boardWidth/2
 const boardCenterY = squareY*boardRows/2
 const boardXOffset = (screenX-squareX*boardColumns)/2
 const boardYOffset = 80
+const buttonX = boardXOffset+boardWidth/2
 const playerX = boardCenterX
 const numItems = 6
 
@@ -92,18 +100,20 @@ const unitFrameRate = 5
 const unitAnimationDuration = 1000
 const moveFrames = 5
 
-buttonFontFamily = "Arial" //"Verdana"
+buttonConfig = { fontSize: '32px', fontFamily:'Courier',fontStyle:'Bold'}
+unitTextConfig = { fontSize: '12px', fontFamily:'Courier',fontStyle:'Bold'}
 playerTextConfig = { fontSize: 40, fontFamily:'Courier', fontStyle:'Bold'} // 'Courier'
 winnerTextConfig = {fontSize: '80px', align:'center',fontFamily:'Courier', fontStyle:'Bold'}
 const ZIGZAG = 'zigzag'
 
-let timeText;
-let board;
-let items;
-let chargeButton;
-let restartButton;
-let human;
-let computer;
+let timeText
+let board
+let items
+let chargeButton
+let restartButton
+let continueButton
+let human
+let computer
 
 const square_types = {
     '.': 'square_empty',
@@ -124,6 +134,7 @@ const unitAbbrevs = {
     'G':'unit_golem'
 }
 
+let levelNum = 0
 const levels = [
     {
         map:
@@ -157,7 +168,46 @@ const levels = [
                 hp:10,
                 attack: 2,
                 shield: 2,  
-                items: "kGkkGkkk",
+                items: "kGkkGk",
+                rowChange: -1,
+                color: cGold,
+            }
+        }
+    },
+    {
+        map:
+            [
+                "......",
+                "......",
+                "......",
+                "......",
+                "......",
+                "......",
+                "......",
+                "......",
+                "......"
+            ],
+        players:
+        {
+            'computer':
+            {
+                hp: 10,
+                attack: 2,
+                shield: 2,
+                units:
+                    ["gggggg",
+                     "g.gg.g",
+                     "g.gg.g"
+                    ],
+                rowChange: 1,
+                color: cBlue,
+            },
+            'human':
+            {
+                hp:10,
+                attack: 2,
+                shield: 2,  
+                items: "kGkkGkGG",
                 rowChange: -1,
                 color: cGold,
             }
@@ -257,7 +307,7 @@ class Unit extends Phaser.GameObjects.Container
         else
         {
             imageName += '_up'
-            textColor = cBlack
+            textColor = cWhite
         }
         this.animKey = imageName+'_anim'
         
@@ -266,9 +316,9 @@ class Unit extends Phaser.GameObjects.Container
             .setDisplaySize(squareX,squareY)
         )
         this.sprite.on("animationcomplete", (pointer) => this.sprite.setFrame(0), this)
-        this.statusText = scene.add.text(5,48, this.statusString(), 
-            { fontSize: '10px', fontFamily:buttonFontFamily, color:textColor})
-        this.statusText.setOrigin(0,0)
+        this.statusText = scene.add.text(32,48, this.statusString(), unitTextConfig)
+        this.statusText.setColor(textColor)
+        this.statusText.setOrigin(0.5,0)
         this.add([this.sprite, this.statusText])
         this.scene.add.existing(this)
         square.board.add(this)
@@ -392,14 +442,34 @@ class Square extends Phaser.GameObjects.Container
         image.setDisplaySize(squareX,squareY)
         image.setSize(squareX,squareY)
         image.setOrigin(0,0)
-        image.on('pointerover', (pointer) => this.setTint(0x808080), this)
-        image.on('pointerout', (pointer) => this.clearTint(), this)
+        image.on('pointerover', (pointer) => this.magnify(), this)
+        image.on('pointerout', (pointer) => this.unmagnify(), this)
         image.setInteractive()
         this.image = image
         this.add(this.image)
 
         board.add(this)
         board.group.add(this) 
+    }
+
+    unmagnify()
+    {
+        if (this.contents.length==1)
+        {
+            let unit = this.contents[0]
+            unit.statusText.setFontSize('12px')
+            console.log(unit)
+        }
+    }
+
+    magnify()
+    {
+        if (this.contents.length==1)
+        {
+            let unit = this.contents[0]
+            unit.statusText.setFontSize('30px')
+            console.log(unit)
+        }
     }
 
     setTint(value) 
@@ -480,7 +550,7 @@ class Square extends Phaser.GameObjects.Container
 
 class Board extends Phaser.GameObjects.Container
 {
-    constructor(scene, x, y, levelNum)
+    constructor(scene, x, y)
     {
         super(scene,x, y)
 
@@ -565,7 +635,7 @@ class Board extends Phaser.GameObjects.Container
     addComputerUnits() 
     {
         this.unitData = []
-        let level = levels[0]
+        let level = levels[levelNum]
         let units_def = level.players["computer"].units
         if (units_def.length==this.turn)
         {
@@ -722,9 +792,11 @@ class Play extends Phaser.Scene
     
     preload ()
     {
+        this.load.image('button_empty', 'button_empty.png')
         this.load.image('button_charge', 'button_charge2.png')
         this.load.image('button_restart', 'button_restart2.png')
-        this.load.spritesheet('combat', 'combat.png',animConfig)
+        this.load.spritesheet('combat', 'combat.png',
+        { frameWidth: 32, frameHeight: 32})
 
         this.load.image('square_empty_even', 'square_empty_even.png')
         this.load.image('square_empty_odd', 'square_empty_odd.png')
@@ -745,15 +817,17 @@ class Play extends Phaser.Scene
 
     create ()
     {
+        console.log('Level '+levelNum)
         //timeText = this.add.text(100,0,'time: ', { fontSize: '14px'})
-        let levelNum = 0
         let levelDefn = levels[levelNum]
 
         this.anims.create({
             key: 'combat_anim',
             frames: 'combat',
             frameRate: 10,
-            repeat: 2
+            repeat: 2,
+            //delay: 1000,
+            //showBeforeDelay: false,
         })
         this.anims.create({
             key:'unit_goblin_down_anim',
@@ -788,19 +862,24 @@ class Play extends Phaser.Scene
 
         })
 
-        board = new Board(this, boardXOffset, boardYOffset,0)
+        board = new Board(this, boardXOffset, boardYOffset)
         computer = new Player(this, screenX/2,20, levelDefn.players.computer)
         human = new Player(this, screenX/2, 830, levelDefn.players.human)
         items = new Inventory(this, boardXOffset,670, levelDefn['players']['human']['items'])
 
-        chargeButton = new Button(this, playerX,790,'button_charge')
-        chargeButton.button.setDisplaySize(256,128)
+        chargeButton = new Button(this, buttonX,790,'button_empty','CHARGE!')
+        chargeButton.button.setDisplaySize(boardWidth,64)
         chargeButton.button.on('pointerup', (pointer) => this.performActions())
 
-        restartButton = new Button(this, playerX, 790, 'button_restart')
-        restartButton.button.setDisplaySize(256,64)
-        restartButton.setVisible(false)
+        restartButton = new Button(this, buttonX, 790, 'button_empty','RESTART!')
+        restartButton.button.setDisplaySize(boardWidth,64)
         restartButton.button.on('pointerup', (pointer) => this.restart())
+        restartButton.setVisible(false)
+
+        continueButton = new Button(this, buttonX,790,'button_empty','NEXT LEVEL!')
+        continueButton.button.setDisplaySize(boardWidth,64)
+        continueButton.button.on('pointerup', (pointer) => this.nextLevel())
+        continueButton.setVisible(false)
 
         this.physics.add.overlap(board.group, items.group, function(square, item)
         {   
@@ -841,6 +920,12 @@ class Play extends Phaser.Scene
         this.scene.restart()
     }
 
+    nextLevel()
+    {
+        console.log('Next Level')
+        levelNum += 1
+        this.scene.start('Play')
+    }
     performActions()
     {
         chargeButton.setVisible(false)
@@ -856,16 +941,18 @@ class Play extends Phaser.Scene
             if (human.hp==computer.hp)
             {
                 text.setText("No\nwinner!")
+                restartButton.setVisible(true)
             }
             else if (human.hp>computer.hp)
             {
                 text.setText("The\nhuman\nwins!")
+                continueButton.setVisible(true)
             }
             else
             {
                 text.setText("The\ncomputer\nwins!")
+                restartButton.setVisible(true)
             }
-            restartButton.setVisible(true)
         }
         else
         {
