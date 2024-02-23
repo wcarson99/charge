@@ -9,7 +9,6 @@ TODO:
 * tighten down animation
 * level selection screen
 * scoring based on remaining player and unit HPs
-* only 4 moves per turn
 * 3 good levels
 * fill out unit types
 * combat on move completion
@@ -18,6 +17,9 @@ TODO:
 * consistent fonts
 * reset units to inventory
 * image load issues
+* eliminate items
+* destroy units before new level
+* only 4 actions per turn
 
 EGA palette - https://en.wikipedia.org/wiki/Enhanced_Graphics_Adapter
 */
@@ -96,19 +98,22 @@ const buttonX = boardXOffset+boardWidth/2
 const playerX = boardCenterX
 const numItems = 6
 
-const unitFrameRate = 5 
-const unitAnimationDuration = 1000
-const moveFrames = 5
+const unitFrameRate = 8
+//const unitAnimationDuration = 1000
+const moveFrames = 4
 
-buttonConfig = { fontSize: '32px', fontFamily:'Courier',fontStyle:'Bold'}
-unitTextConfig = { fontSize: '12px', fontFamily:'Courier',fontStyle:'Bold'}
-playerTextConfig = { fontSize: 40, fontFamily:'Courier', fontStyle:'Bold'} // 'Courier'
-winnerTextConfig = {fontSize: '80px', align:'center',fontFamily:'Courier', fontStyle:'Bold'}
+const animConfig = { frameWidth: 32, frameHeight: 32 } 
+const buttonConfig = { fontSize: '32px', fontFamily:'Courier',fontStyle:'Bold'}
+const unitTextConfig = { fontSize: '12px', fontFamily:'Courier',fontStyle:'Bold'}
+const playerTextConfig = { fontSize: 40, fontFamily:'Courier', fontStyle:'Bold'} // 'Courier'
+const winnerTextConfig = {fontSize: '80px', align:'center',fontFamily:'Courier', fontStyle:'Bold'}
 const ZIGZAG = 'zigzag'
 
 let timeText
 let board
 let items
+let inventoryX = boardXOffset
+let inventoryY = 670
 let chargeButton
 let restartButton
 let continueButton
@@ -197,7 +202,7 @@ const levels = [
                 units:
                     ["gggggg",
                      "g.gg.g",
-                     "g.gg.g"
+                     "gggggg"
                     ],
                 rowChange: 1,
                 color: cBlue,
@@ -366,7 +371,7 @@ class Unit extends Phaser.GameObjects.Container
         console.log(this)
         this.timedEvent = this.scene.time.addEvent(
             {
-                delay: 200,
+                delay: 100,
                 repeat: moveFrames-1,
                 callback: function () {
                     this.y += rowInc
@@ -559,6 +564,7 @@ class Board extends Phaser.GameObjects.Container
         this.turn = 0
         
         this.group = scene.physics.add.group()
+        //this.group.add(this)
         let width = boardRows*squareX
         let height = boardColumns*squareY
         this.setSize(width, height)
@@ -583,6 +589,19 @@ class Board extends Phaser.GameObjects.Container
                 let type = square_types[row[c]]
                 this.mapData[r][c] = new Square(this, i, type, c, r);
                 i++;
+            }   
+        }  
+    }
+
+    clear()
+    {
+        for (let r = 0; r < boardRows; r++)
+        {
+            let row = mapDef[r]
+            this.mapData[r] = [];
+            for (let c = 0; c < row.length; c++)
+            {
+                let square = this.mapData[r][c]
             }   
         }  
     }
@@ -670,8 +689,10 @@ class Item extends Phaser.GameObjects.Sprite
         this.setDisplaySize(squareX,squareY)
         this.setSize(squareX,squareY)
         this.setInteractive({ draggable: true})
+        //this.setInteractive(scene.input.makePixelPerfect());
         this.setOrigin(0,0)
 
+        
         items.group.add(this)
     }
 }
@@ -751,10 +772,55 @@ class Welcome extends Phaser.Scene
     {
         this.load.image('black','black.png')
         this.load.image('white','white.png')
+
+        this.load.image('button_empty', 'button_empty.png')
+        this.load.image('button_charge', 'button_charge2.png')
+        this.load.image('button_restart', 'button_restart2.png')
+        this.load.spritesheet('combat', 'combat.png', animConfig)
+
+        this.load.image('square_empty_even', 'square_empty_even.png')
+        this.load.image('square_empty_odd', 'square_empty_odd.png')
+        this.load.spritesheet('unit_knight_up', 'unit_knight_up.png',animConfig)
+
+        this.load.spritesheet('unit_goblin_down', 'unit_goblin_down.png',animConfig)
+        this.load.spritesheet('unit_golem_up', 'unit_golem_up.png',animConfig)
+        this.load.spritesheet('unit_snake_up', 'unit_snake_up.png',animConfig)
     }
 
     create()
     {
+        this.anims.create({
+            key: 'combat_anim',
+            frames: 'combat',
+            frameRate: 10,
+            repeat: 2,
+            //delay: 1000,
+            //showBeforeDelay: false,
+        })
+        this.anims.create({
+            key:'unit_goblin_down_anim',
+            frames: 'unit_goblin_down',
+            //duration: unitAnimationDuration,
+            frameRate: unitFrameRate,
+            repeat: 0
+        })
+        this.anims.create({
+            key:'unit_knight_up_anim',
+            frames: 'unit_knight_up',
+            //duration: unitAnimationDuration,
+            frameRate: unitFrameRate,
+            repeat: 0
+
+        })
+        this.anims.create({
+            key:'unit_golem_up_anim',
+            frames: 'unit_golem_up',
+            //duration: unitAnimationDuration,
+            frameRate: unitFrameRate,
+            repeat: 0
+        })
+
+
         /*
         https://www.hostinger.com/tutorials/best-html-web-fonts#:~:text=Web%2Dsafe%20fonts%20are%20fonts,Times%20New%20Roman%2C%20and%20Helvetica.
         */
@@ -782,7 +848,6 @@ class Welcome extends Phaser.Scene
     }
 }
 
-const animConfig = { frameWidth: 60, frameHeight: 60 }
 class Play extends Phaser.Scene
 {
     constructor()
@@ -792,23 +857,6 @@ class Play extends Phaser.Scene
     
     preload ()
     {
-        this.load.image('button_empty', 'button_empty.png')
-        this.load.image('button_charge', 'button_charge2.png')
-        this.load.image('button_restart', 'button_restart2.png')
-        this.load.spritesheet('combat', 'combat.png',
-        { frameWidth: 32, frameHeight: 32})
-
-        this.load.image('square_empty_even', 'square_empty_even.png')
-        this.load.image('square_empty_odd', 'square_empty_odd.png')
-        this.load.spritesheet('unit_knight_up', 'unit_knight_up.png',
-        { frameWidth: 32, frameHeight: 32 })
-
-        this.load.spritesheet('unit_goblin_down', 'unit_goblin_down.png',
-            { frameWidth: 32, frameHeight: 32 })
-        this.load.spritesheet('unit_golem_up', 'unit_golem_up.png',
-        { frameWidth: 32, frameHeight: 32 })
-        this.load.spritesheet('unit_snake_up', 'unit_snake_up.png',
-            { frameWidth: 30, frameHeight: 30 })
 
         }
 
@@ -822,50 +870,18 @@ class Play extends Phaser.Scene
         let levelDefn = levels[levelNum]
 
         this.anims.create({
-            key: 'combat_anim',
-            frames: 'combat',
-            frameRate: 10,
-            repeat: 2,
-            //delay: 1000,
-            //showBeforeDelay: false,
-        })
-        this.anims.create({
-            key:'unit_goblin_down_anim',
-            frames: 'unit_goblin_down',
-            duration: unitAnimationDuration,
-            frameRate: unitFrameRate,
-            repeat: 0
-        })
-        this.anims.create({
-            key:'unit_knight_up_anim',
-            frames: 'unit_knight_up',
-            duration: unitAnimationDuration,
-            frameRate: unitFrameRate,
-            repeat: 0
-
-        })
-        this.anims.create({
-            key:'unit_golem_up_anim',
-            frames: 'unit_golem_up',
-            duration: unitAnimationDuration,
-            frameRate: unitFrameRate,
-            repeat: 0
-
-        })
-
-        this.anims.create({
             key:'unit_snake_up_anim',
             frames: 'unit_snake_up',
-            duration: unitAnimationDuration,
+            //duration: unitAnimationDuration,
             frameRate: unitFrameRate,
             repeat: 1
 
         })
 
         board = new Board(this, boardXOffset, boardYOffset)
-        computer = new Player(this, screenX/2,20, levelDefn.players.computer)
-        human = new Player(this, screenX/2, 830, levelDefn.players.human)
-        items = new Inventory(this, boardXOffset,670, levelDefn['players']['human']['items'])
+        computer = new Player(this, buttonX,20, levelDefn.players.computer)
+        human = new Player(this, buttonX, 830, levelDefn.players.human)
+        items = new Inventory(this, inventoryX,inventoryY, levelDefn['players']['human']['items'])
 
         chargeButton = new Button(this, buttonX,790,'button_empty','CHARGE!')
         chargeButton.button.setDisplaySize(boardWidth,64)
@@ -876,13 +892,15 @@ class Play extends Phaser.Scene
         restartButton.button.on('pointerup', (pointer) => this.restart())
         restartButton.setVisible(false)
 
-        continueButton = new Button(this, buttonX,790,'button_empty','NEXT LEVEL!')
+        let continueText = 'NEXT LEVEL '+(levelNum+1)+'!'
+        continueButton = new Button(this, buttonX,790,'button_empty',continueText)
         continueButton.button.setDisplaySize(boardWidth,64)
         continueButton.button.on('pointerup', (pointer) => this.nextLevel())
         continueButton.setVisible(false)
 
         this.physics.add.overlap(board.group, items.group, function(square, item)
         {   
+            //console.log(square)
             if (item.newSquare) 
             {
                 item.newSquare.clearTint()
@@ -891,15 +909,23 @@ class Play extends Phaser.Scene
             item.newSquare = square
         })
 
+        this.input.on('dragstart', function (pointer, gameObject, dragX, dragY) {
+            gameObject.setDisplaySize(squareX/2,squareY/2)
+            console.log(gameObject)
+            console.log(pointer)
+            console.log((pointer.downX-gameObject.x)+' '+(pointer.downY-gameObject.y))
+            gameObject.setPosition(gameObject.x+squareX/4, gameObject.y+squareY/4)
+        })
+
         this.input.on('drag', function (pointer, gameObject, dragX, dragY) {
             gameObject.setPosition(dragX, dragY)
-            gameObject.play(gameObject.animKey)
         })
 
         this.input.on('dragend', function (pointer, item) {
         
             if (item.newSquare == null)
             {
+                item.setDisplaySize(squareX,squareY)
                 item.setPosition(item.column*squareX,item.row*squareY)
             }
             else
@@ -917,6 +943,7 @@ class Play extends Phaser.Scene
     restart()
     {
         console.log('Restarting')
+        board.clear()
         this.scene.restart()
     }
 
@@ -936,7 +963,7 @@ class Play extends Phaser.Scene
         computer.update()
         if (human.hp<=0 || computer.hp<=0)
         {
-            let text = this.add.text(boardCenterX,400,'', 
+            let text = this.add.text(buttonX,400,'', 
                 winnerTextConfig).setOrigin(0.5)
             if (human.hp==computer.hp)
             {
