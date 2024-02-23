@@ -6,6 +6,7 @@ For Glitch - https://en.flossmanuals.net/phaser-game-making-in-glitch/_full/
 
 
 TODO:
+* deploy to glitch
 * tighten down animation
 * level selection screen
 * scoring based on remaining player and unit HPs
@@ -82,11 +83,11 @@ const cBackground = cDarkGreen
 const cSquare = cLightGreen
 const cInventory = cMagenta
 
-const screenX = 450
-const screenY = 900
-const squareX =64
-const squareY = 64
-const boardRows = 9
+const screenX = 700
+const screenY = 1200
+const squareX = 80
+const squareY = 80
+const boardRows = 7
 const boardColumns = 6
 const boardWidth = squareX*boardColumns
 const boardCenterX = boardWidth/2
@@ -129,7 +130,7 @@ const square_types = {
 const unitDefns = {
     'unit_knight': {'attack':1, 'hp':2, 'shield':3  ,'horizontal':'none'},
     'unit_goblin': {'attack':2, 'hp':2, 'shield':1, 'horizontal':'none'},
-    'unit_golem': {'attack':3, 'hp':10, 'shield':1, 'horizontal':'none'},
+    'unit_golem': {'attack':3, 'hp':6, 'shield':1, 'horizontal':'none'},
     'unit_snake': {'attack':5, 'hp':3, 'shield':0, 'horizontal':ZIGZAG}
 }
 
@@ -144,8 +145,6 @@ const levels = [
     {
         map:
             [
-                "......",
-                "......",
                 "......",
                 "......",
                 "......",
@@ -182,8 +181,6 @@ const levels = [
     {
         map:
             [
-                "......",
-                "......",
                 "......",
                 "......",
                 "......",
