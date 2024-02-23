@@ -18,7 +18,6 @@ TODO:
 * reset units to inventory
 * image load issues
 * eliminate items
-* destroy units before new level
 * only 4 actions per turn
 
 EGA palette - https://en.wikipedia.org/wiki/Enhanced_Graphics_Adapter
@@ -106,7 +105,7 @@ const animConfig = { frameWidth: 32, frameHeight: 32 }
 const buttonConfig = { fontSize: '32px', fontFamily:'Courier',fontStyle:'Bold'}
 const unitTextConfig = { fontSize: '12px', fontFamily:'Courier',fontStyle:'Bold'}
 const playerTextConfig = { fontSize: 40, fontFamily:'Courier', fontStyle:'Bold'} // 'Courier'
-const winnerTextConfig = {fontSize: '80px', align:'center',fontFamily:'Courier', fontStyle:'Bold'}
+const winnerTextConfig = {fontSize: '60px', align:'center',fontFamily:'Courier', fontStyle:'Bold'}
 const ZIGZAG = 'zigzag'
 
 let timeText
@@ -117,6 +116,7 @@ let inventoryY = 670
 let chargeButton
 let restartButton
 let continueButton
+let welcomeButton
 let human
 let computer
 
@@ -127,7 +127,7 @@ const square_types = {
 }
 
 const unitDefns = {
-    'unit_knight': {'attack':1, 'hp':2, 'shield':3,'horizontal':'none'},
+    'unit_knight': {'attack':1, 'hp':2, 'shield':3  ,'horizontal':'none'},
     'unit_goblin': {'attack':2, 'hp':2, 'shield':1, 'horizontal':'none'},
     'unit_golem': {'attack':3, 'hp':10, 'shield':1, 'horizontal':'none'},
     'unit_snake': {'attack':5, 'hp':3, 'shield':0, 'horizontal':ZIGZAG}
@@ -760,12 +760,11 @@ class Inventory extends Phaser.GameObjects.Container
     }
 }
 
-
-class Welcome extends Phaser.Scene
+class Preload extends Phaser.Scene
 {
     constructor()
     {
-        super('Welcome')
+        super('Preload')
     }
 
     preload()
@@ -787,7 +786,7 @@ class Welcome extends Phaser.Scene
         this.load.spritesheet('unit_snake_up', 'unit_snake_up.png',animConfig)
     }
 
-    create()
+    create() 
     {
         this.anims.create({
             key: 'combat_anim',
@@ -820,11 +819,92 @@ class Welcome extends Phaser.Scene
             repeat: 0
         })
 
+        this.anims.create({
+            key:'unit_snake_up_anim',
+            frames: 'unit_snake_up',
+            //duration: unitAnimationDuration,
+            frameRate: unitFrameRate,
+            repeat: 1
 
+        })
+        this.scene.start('Welcome')
+    }
+
+}
+
+class Welcome extends Phaser.Scene
+{
+    constructor()
+    {
+        super('Welcome')
+    }
+/*
+    preload()
+    {
+        this.load.image('black','black.png')
+        this.load.image('white','white.png')
+
+        this.load.image('button_empty', 'button_empty.png')
+        this.load.image('button_charge', 'button_charge2.png')
+        this.load.image('button_restart', 'button_restart2.png')
+        this.load.spritesheet('combat', 'combat.png', animConfig)
+
+        this.load.image('square_empty_even', 'square_empty_even.png')
+        this.load.image('square_empty_odd', 'square_empty_odd.png')
+        this.load.spritesheet('unit_knight_up', 'unit_knight_up.png',animConfig)
+
+        this.load.spritesheet('unit_goblin_down', 'unit_goblin_down.png',animConfig)
+        this.load.spritesheet('unit_golem_up', 'unit_golem_up.png',animConfig)
+        this.load.spritesheet('unit_snake_up', 'unit_snake_up.png',animConfig)
+    }
+*/
+    create()
+    {
+        /*
+        this.anims.create({
+            key: 'combat_anim',
+            frames: 'combat',
+            frameRate: 10,
+            repeat: 2,
+            //delay: 1000,
+            //showBeforeDelay: false,
+        })
+        this.anims.create({
+            key:'unit_goblin_down_anim',
+            frames: 'unit_goblin_down',
+            //duration: unitAnimationDuration,
+            frameRate: unitFrameRate,
+            repeat: 0
+        })
+        this.anims.create({
+            key:'unit_knight_up_anim',
+            frames: 'unit_knight_up',
+            //duration: unitAnimationDuration,
+            frameRate: unitFrameRate,
+            repeat: 0
+
+        })
+        this.anims.create({
+            key:'unit_golem_up_anim',
+            frames: 'unit_golem_up',
+            //duration: unitAnimationDuration,
+            frameRate: unitFrameRate,
+            repeat: 0
+        })
+
+        this.anims.create({
+            key:'unit_snake_up_anim',
+            frames: 'unit_snake_up',
+            //duration: unitAnimationDuration,
+            frameRate: unitFrameRate,
+            repeat: 1
+
+        })
+        */
         /*
         https://www.hostinger.com/tutorials/best-html-web-fonts#:~:text=Web%2Dsafe%20fonts%20are%20fonts,Times%20New%20Roman%2C%20and%20Helvetica.
         */
-        this.scene.start('Play')
+        //this.scene.start('Play')
         const welcome = [
             "Welcome to Attack!",
             "",
@@ -838,8 +918,9 @@ class Welcome extends Phaser.Scene
             welcome.join("\n"),
             { 
                 align: "center",
-                fontFamily: "Geneva",
-                fontSize: 25,
+                fontFamily: "Courier",
+                fontSize: 18,
+                fontStyle: 'Bold',
                 color: cText,
             })
         this.input.on("pointerup", 
@@ -869,15 +950,6 @@ class Play extends Phaser.Scene
         //timeText = this.add.text(100,0,'time: ', { fontSize: '14px'})
         let levelDefn = levels[levelNum]
 
-        this.anims.create({
-            key:'unit_snake_up_anim',
-            frames: 'unit_snake_up',
-            //duration: unitAnimationDuration,
-            frameRate: unitFrameRate,
-            repeat: 1
-
-        })
-
         board = new Board(this, boardXOffset, boardYOffset)
         computer = new Player(this, buttonX,20, levelDefn.players.computer)
         human = new Player(this, buttonX, 830, levelDefn.players.human)
@@ -897,6 +969,11 @@ class Play extends Phaser.Scene
         continueButton.button.setDisplaySize(boardWidth,64)
         continueButton.button.on('pointerup', (pointer) => this.nextLevel())
         continueButton.setVisible(false)
+
+        welcomeButton = new Button(this, buttonX,790,'button_empty','NEW GAME!')
+        welcomeButton.button.setDisplaySize(boardWidth,64)
+        welcomeButton.button.on('pointerup', (pointer) => this.newGame())
+        welcomeButton.setVisible(false)
 
         this.physics.add.overlap(board.group, items.group, function(square, item)
         {   
@@ -940,6 +1017,12 @@ class Play extends Phaser.Scene
         this.timedEvent = this.time.addEvent({ delay: 2000, callback: this.onTimer, callbackScope: this, loop: true });
     }
 
+    newGame()
+    {
+        welcomeButton.setVisible(false)
+        levelNum = 0
+        this.scene.start('Welcome')
+    }
     restart()
     {
         console.log('Restarting')
@@ -950,7 +1033,7 @@ class Play extends Phaser.Scene
     nextLevel()
     {
         console.log('Next Level')
-        levelNum += 1
+        //levelNum += 1
         this.scene.start('Play')
     }
     performActions()
@@ -972,8 +1055,15 @@ class Play extends Phaser.Scene
             }
             else if (human.hp>computer.hp)
             {
-                text.setText("The\nhuman\nwins!")
-                continueButton.setVisible(true)
+                levelNum +=1
+                if (levelNum==levels.length){
+                    text.setText("The\ncomputer\nsurrenders\n")
+                    welcomeButton.setVisible(true)
+                }
+                else {
+                    text.setText("The\nhuman\nwins!")
+                    continueButton.setVisible(true)
+                }
             }
             else
             {
@@ -1037,7 +1127,7 @@ const config = {
         }
     },
     pixelArt: true,
-    scene: [Welcome, Play]
+    scene: [Preload, Welcome, Play]
 };
 
 const game = new Phaser.Game(config);
