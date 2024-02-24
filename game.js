@@ -3,6 +3,8 @@ Notes:
 
 For creating sprites - https://www.piskelapp.com/
 For Glitch - https://en.flossmanuals.net/phaser-game-making-in-glitch/_full/
+EGA palette - https://en.wikipedia.org/wiki/Enhanced_Graphics_Adapter
+Fonts - https://www.hostinger.com/tutorials/best-html-web-fonts#:~:text=Web%2Dsafe%20fonts%20are%20fonts,Times%20New%20Roman%2C%20and%20Helvetica.
 
 
 TODO:
@@ -22,7 +24,6 @@ TODO:
 . magnify unit on hover
 . consistent fonts
 
-EGA palette - https://en.wikipedia.org/wiki/Enhanced_Graphics_Adapter
 */
 
 class Button extends Phaser.GameObjects.Container
@@ -33,16 +34,16 @@ class Button extends Phaser.GameObjects.Container
         this.scene.add.existing(this)
 
         // TODO: Remove \n and get positioning correct
-        const buttonText = this.scene.add.text(0,0, '\n'+text, 
+        this.text = this.scene.add.text(0,0, '\n'+text, 
             buttonConfig)
             
         const button = this.scene.add.image(0, 0, key).setInteractive()
         button.setDisplaySize(boardWidth,buttonHeight)
         button.setDisplayOrigin(64,0)
         this.add(button);
-        this.add(buttonText);
+        this.add(this.text);
 
-        Phaser.Display.Align.In.Center(buttonText, button);
+        Phaser.Display.Align.In.Center(this.text, button);
         button.on('pointerover', (pointer) => button.setTint(0x808080))
         button.on('pointerout', (pointer) => button.clearTint())
         button.on('pointerdown', (pointer) => button.setTint(0xc08080))
@@ -113,14 +114,13 @@ const humanY = buttonY + squareX
 const numItems = 6
 
 const unitFrameRate = 8
-//const unitAnimationDuration = 1000
 const moveFrames = 4
 
 const animConfig = { frameWidth: 32, frameHeight: 32 } 
 const buttonConfig = { fontSize: '64px', fontFamily:'Courier',fontStyle:'Bold', color:cDarkGreen}
 const unitTextConfig = { fontSize: '12px', fontFamily:'Courier',fontStyle:'Bold'}
 const playerTextConfig = { fontSize: 3*squareX/4, fontFamily:'Courier', fontStyle:'Bold'} // 'Courier'
-const winnerTextConfig = {fontSize: '60px', align:'center',fontFamily:'Courier', fontStyle:'Bold'}
+const winnerTextConfig = {fontSize: '128px', align:'center',fontFamily:'Courier', fontStyle:'Bold'}
 const welcomeTextConfig = { 
     //align: "center",
     fontFamily: "Courier",
@@ -151,7 +151,7 @@ const square_types = {
 const unitDefns = {
     'unit_knight': {'attack':1, 'hp':2, 'shield':3  ,'horizontal':'none'},
     'unit_goblin': {'attack':2, 'hp':2, 'shield':1, 'horizontal':'none'},
-    'unit_golem': {'attack':3, 'hp':6, 'shield':1, 'horizontal':'none'},
+    'unit_golem': {'attack':3, 'hp':3, 'shield':1, 'horizontal':'none'},
     'unit_snake': {'attack':5, 'hp':3, 'shield':0, 'horizontal':ZIGZAG}
 }
 
@@ -162,81 +162,61 @@ const unitAbbrevs = {
 }
 
 let levelNum = 0
-const levels = [
-    {
-        map:
-            [
-                "......",
-                "......",
-                "......",
-                "......",
-                "......",
-                "......",
-                "......"
-            ],
-        players:
-        {
-            'computer':
-            {
-                hp: 10,
-                attack: 2,
-                shield: 2,
-                units:
-                    ["gggggg",
-                     "g.gg.g"
-                    ],
-                rowChange: 1,
-                color: cComputer,
-            },
-            'human':
-            {
-                hp:10,
-                attack: 2,
-                shield: 2,  
-                items: "kGkkGk",
-                rowChange: -1,
-                color: cHuman,
-            }
-        }
+const runConfig = {
+    computer: {
+        hp: 10,
+        attack: 2,
+        shield: 2,
+        rowChange: 1,
+        color: cComputer
     },
-    {
-        map:
-            [
-                "......",
-                "......",
-                "......",
-                "......",
-                "......",
-                "......",
-                "......"
-            ],
-        players:
+    human: {
+        hp: 10,
+        attack: 2,
+        shield: 2,
+        rowChange: -1,
+        color: cHuman
+    },
+    levels: [
         {
-            'computer':
-            {
-                hp: 10,
-                attack: 2,
-                shield: 2,
-                units:
-                    ["gggggg",
-                     "g.gg.g",
-                     "gggggg"
-                    ],
-                rowChange: 1,
-                color: cBlue,
+            computer: {
+                units: [
+                    "gggggg",
+                    "g.gg.gg"
+                ]
             },
-            'human':
-            {
-                hp:10,
-                attack: 2,
-                shield: 2,  
-                items: "kGkkGkGG",
-                rowChange: -1,
-                color: cGold,
+            human: {
+                units: 'kGG'
             }
-        }
-    }
-]
+        },
+        {
+            computer: {
+                units: [
+                    "gggggg",
+                    "gggggg",
+                    "gggggg"
+                ]
+            },
+            human: {
+                units: 'kGkkGkG'
+            }
+        },
+        {
+            computer: {
+                units: [
+                    "gggggg",
+                    "gggggg",
+                    "gggggg"
+                ]
+            },
+            human: {
+                units: 'kkkkGGGG'
+            }
+        },
+    ]
+}
+
+levels = runConfig.levels
 
 class Player 
 {
@@ -302,7 +282,7 @@ class Unit extends Phaser.GameObjects.Container
         this.defn = unitDefns[typ]
         this.attack = this.defn.attack
         this.hp = this.defn.hp
-        this.shield = this.defn.shield
+        this.initialShield = this.defn.shield
         this.horizontal = this.defn.horizontal
         if (this.horizontal==ZIGZAG)
         {
@@ -404,7 +384,6 @@ class Unit extends Phaser.GameObjects.Container
                 callbackScope: this,
             }
         )
-
     }
 
     takeDamage(attack)
@@ -486,9 +465,6 @@ class Square extends Phaser.GameObjects.Container
         if (this.contents.length==1)
         {
             unitStatus.setVisible(false)
-            //let unit = this.contents[0]
-            //unit.statusText.setFontSize('12px')
-            //console.log(unit)
         }
     }
 
@@ -497,7 +473,6 @@ class Square extends Phaser.GameObjects.Container
         if (this.contents.length==1)
         {
             let unit = this.contents[0]
-            console.log(unit)
             if (unit.rowChange==1)
             {
                 unitStatus.setColor(cComputer)
@@ -557,7 +532,6 @@ class Square extends Phaser.GameObjects.Container
                 }
                 else
                 {
-                    //unit.update()
                     newContents.push(unit)
                 }
             }
@@ -614,15 +588,15 @@ class Board extends Phaser.GameObjects.Container
     createMap()
     {
         let i = 0;
-        let mapDef = this.level.map
-        for (let r = 0; r < mapDef.length; r++)
+        //let mapDef = this.level.map
+        for (let r = 0; r < boardRows; r++)
         {
-            let row = mapDef[r]
+            //let row = mapDef[r]
             this.mapData[r] = [];
-            for (let c = 0; c < row.length; c++)
+            for (let c = 0; c < boardColumns; c++)
             {
-                let type = square_types[row[c]]
-                this.mapData[r][c] = new Square(this, i, type, c, r);
+                //let type = square_types[row[c]]
+                this.mapData[r][c] = new Square(this, i, 'square_empty', c, r);
                 i++;
             }   
         }  
@@ -651,6 +625,7 @@ class Board extends Phaser.GameObjects.Container
                 let contents = square.contents
                 while (contents.length > 0) {
                     let unit = contents.pop()
+                    unit.shield = unit.initialShield
                     unit.move()
                     movingUnits.push(unit)                        
                     this.mapData[unit.row][unit.column].nextContents.push(unit)
@@ -689,8 +664,10 @@ class Board extends Phaser.GameObjects.Container
     addComputerUnits() 
     {
         this.unitData = []
-        let level = levels[levelNum]
-        let units_def = level.players["computer"].units
+        console.log(levelNum)
+        let level = runConfig.levels[levelNum]
+        console.log(level)
+        let units_def = level.computer.units
         if (units_def.length==this.turn)
         {
             return
@@ -873,73 +850,11 @@ class Welcome extends Phaser.Scene
     {
         super('Welcome')
     }
-/*
-    preload()
-    {
-        this.load.image('black','black.png')
-        this.load.image('white','white.png')
-
-        this.load.image('button_empty', 'button_empty.png')
-        this.load.image('button_charge', 'button_charge2.png')
-        this.load.image('button_restart', 'button_restart2.png')
-        this.load.spritesheet('combat', 'combat.png', animConfig)
-
-        this.load.image('square_empty_even', 'square_empty_even.png')
-        this.load.image('square_empty_odd', 'square_empty_odd.png')
-        this.load.spritesheet('unit_knight_up', 'unit_knight_up.png',animConfig)
-
-        this.load.spritesheet('unit_goblin_down', 'unit_goblin_down.png',animConfig)
-        this.load.spritesheet('unit_golem_up', 'unit_golem_up.png',animConfig)
-        this.load.spritesheet('unit_snake_up', 'unit_snake_up.png',animConfig)
-    }
-*/
     create()
     {
-        /*
-        this.anims.create({
-            key: 'combat_anim',
-            frames: 'combat',
-            frameRate: 10,
-            repeat: 2,
-            //delay: 1000,
-            //showBeforeDelay: false,
-        })
-        this.anims.create({
-            key:'unit_goblin_down_anim',
-            frames: 'unit_goblin_down',
-            //duration: unitAnimationDuration,
-            frameRate: unitFrameRate,
-            repeat: 0
-        })
-        this.anims.create({
-            key:'unit_knight_up_anim',
-            frames: 'unit_knight_up',
-            //duration: unitAnimationDuration,
-            frameRate: unitFrameRate,
-            repeat: 0
-
-        })
-        this.anims.create({
-            key:'unit_golem_up_anim',
-            frames: 'unit_golem_up',
-            //duration: unitAnimationDuration,
-            frameRate: unitFrameRate,
-            repeat: 0
-        })
-
-        this.anims.create({
-            key:'unit_snake_up_anim',
-            frames: 'unit_snake_up',
-            //duration: unitAnimationDuration,
-            frameRate: unitFrameRate,
-            repeat: 1
-
-        })
-        */
-        /*
-        https://www.hostinger.com/tutorials/best-html-web-fonts#:~:text=Web%2Dsafe%20fonts%20are%20fonts,Times%20New%20Roman%2C%20and%20Helvetica.
-        */
-        this.scene.start('Play')
+        levelNum = 0
+        
+        //this.scene.start('Play')
         const welcome = [
             "",
             "Welcome to ATTACK!",
@@ -958,21 +873,12 @@ class Welcome extends Phaser.Scene
             "",
             "30 GOTO 20"
         ]
-        console.log(boardXOffset)
-        console.log(boardWidth)
-        console.log(buttonX)
         const text = this.add.text(buttonX,0,
             welcome.join("\n"), welcomeTextConfig)
         text.setOrigin(0.5,0)
-        /*
-        const text2 = this.add.text(buttonX,0,
-            welcome.join("\n"), welcomeTextConfig)
-            */
         startButton = new Button(this, buttonX,buttonY,'button_empty','CLICK TO START!')
         startButton.button.setDisplaySize(boardWidth,buttonHeight)
         startButton.button.on('pointerup', (pointer) => this.scene.start("Play"))
-    
-    
     }
 }
 
@@ -997,13 +903,13 @@ class Play extends Phaser.Scene
         //timeText = this.add.text(100,0,'time: ', { fontSize: '14px'})
         let levelDefn = levels[levelNum]
 
-        computer = new Player(this, buttonX,computerY, levelDefn.players.computer)
+        computer = new Player(this, buttonX,computerY, runConfig.computer)
         unitStatus = this.add.text(buttonX,computerY,"",playerTextConfig)
         unitStatus.setOrigin(0.5,0)
         unitStatus.setBackgroundColor(cLightGreen)
         board = new Board(this, boardXOffset, boardYOffset)
-        human = new Player(this, buttonX, humanY, levelDefn.players.human)
-        items = new Inventory(this, inventoryX,inventoryY, levelDefn['players']['human']['items'])
+        human = new Player(this, buttonX, humanY, runConfig.human)
+        items = new Inventory(this, inventoryX,inventoryY, levelDefn.human.units)
 
         chargeButton = new Button(this, buttonX,buttonY,'button_empty','CHARGE!')
         chargeButton.button.on('pointerup', (pointer) => this.performActions())
@@ -1016,6 +922,7 @@ class Play extends Phaser.Scene
         welcomeButton.button.on('pointerup', (pointer) => this.scene.start('Welcome'))
         welcomeButton.setVisible(false)
 
+        // TODO: move continueText to performActions
         let continueText = 'NEXT LEVEL '+(levelNum+1)+'!'
         continueButton = new Button(this, buttonX,buttonY,'button_empty',continueText)
         continueButton.button.on('pointerup', (pointer) => this.nextLevel())
@@ -1096,25 +1003,31 @@ class Play extends Phaser.Scene
                 winnerTextConfig).setOrigin(0.5)
             if (human.hp==computer.hp)
             {
+                text.setColor(cComputer)
                 text.setText("No\nwinner!")
-                restartButton.setVisible(true)
+                welcomeButton.setVisible(true)
             }
             else if (human.hp>computer.hp)
             {
                 levelNum +=1
                 if (levelNum==levels.length){
-                    text.setText("The\ncomputer\nsurrenders\n")
+                    text.setColor(cHuman)
+                    text.setText("The\ncomputer\nis\ndefeated!\n")
                     welcomeButton.setVisible(true)
                 }
                 else {
+                    text.setColor(cHuman)
                     text.setText("The\nhuman\nwins!")
+                    //let continueText = 'NEXT LEVEL '+(levelNum+1)+'!'
+                    //continueButton.text.setText(continueText)
                     continueButton.setVisible(true)
                 }
             }
             else
             {
-                text.setText("The\ncomputer\nwins!")
-                restartButton.setVisible(true)
+                text.setColor(cComputer)
+                text.setText("The\nhuman\nis\ndefeated!")
+                welcomeButton.setVisible(true)
             }
         }
         else
