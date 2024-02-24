@@ -182,18 +182,18 @@ const runConfig = {
             computer: {
                 units: [
                     "gggggg",
-                    "g.gg.gg"
+                    "g.gg.g"
                 ]
             },
             human: {
-                units: 'kGG'
+                units: 'kGGk'
             }
         },
         {
             computer: {
                 units: [
-                    "gggggg",
-                    "gggggg",
+                    "g.gg.g",
+                    "gg..gg",
                     "gggggg"
                 ]
             },
@@ -280,6 +280,7 @@ class Unit extends Phaser.GameObjects.Container
         this.columnChange = 0
 
         this.defn = unitDefns[typ]
+        console.log(typ)
         this.attack = this.defn.attack
         this.hp = this.defn.hp
         this.initialShield = this.defn.shield
@@ -679,7 +680,7 @@ class Board extends Phaser.GameObjects.Container
             {
                 continue
             }
-            let typ = unitAbbrevs[units_def[0][c]]
+            let typ = unitAbbrevs[abbrev]
             this.addUnit(typ, c, 0, 1)
         } 
         this.turn +=1
@@ -852,7 +853,7 @@ class Welcome extends Phaser.Scene
     }
     create()
     {
-        levelNum = 0
+        levelNum = 1
         
         //this.scene.start('Play')
         const welcome = [
@@ -871,7 +872,7 @@ class Welcome extends Phaser.Scene
             "",
             "20 Click CHARGE!",
             "",
-            "30 GOTO 20"
+            "30 GOTO 10"
         ]
         const text = this.add.text(buttonX,0,
             welcome.join("\n"), welcomeTextConfig)
