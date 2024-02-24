@@ -14,30 +14,35 @@ TODO:
 * fill out unit types
 * combat on move completion
 * cleanup unit text
-* magnify unit on hover
-* consistent fonts
 * reset units to inventory
 * image load issues
-* eliminate items
+* eliminate Items
 * only 4 actions per turn
+* fix player status alignment
+. magnify unit on hover
+. consistent fonts
 
 EGA palette - https://en.wikipedia.org/wiki/Enhanced_Graphics_Adapter
 */
 
 class Button extends Phaser.GameObjects.Container
 {
-    constructor(scene, x, y, key, text, fontColor = '#000') {
+    constructor(scene, x, y, key, text) {
         super(scene, x, y)
         this.scene = scene
+        this.scene.add.existing(this)
 
-        const button = this.scene.add.image(0, 0, key).setInteractive()
-        const buttonText = this.scene.add.text(0, 0, text, 
+        // TODO: Remove \n and get positioning correct
+        const buttonText = this.scene.add.text(0,0, '\n'+text, 
             buttonConfig)
-        button.setDisplaySize(buttonText.width,30)
             
-        Phaser.Display.Align.In.Center(buttonText, button);
+        const button = this.scene.add.image(0, 0, key).setInteractive()
+        button.setDisplaySize(boardWidth,buttonHeight)
+        button.setDisplayOrigin(64,0)
         this.add(button);
         this.add(buttonText);
+
+        Phaser.Display.Align.In.Center(buttonText, button);
         button.on('pointerover', (pointer) => button.setTint(0x808080))
         button.on('pointerout', (pointer) => button.clearTint())
         button.on('pointerdown', (pointer) => button.setTint(0xc08080))
@@ -46,7 +51,6 @@ class Button extends Phaser.GameObjects.Container
           console.log('No pointerup handler implemented')
         });
         this.button = button
-        this.scene.add.existing(this)
       }
 }
 
@@ -82,21 +86,30 @@ const cText = cGreen
 const cBackground = cDarkGreen
 const cSquare = cLightGreen
 const cInventory = cMagenta
+const cHuman = cGold
+const cComputer = cBlue
 
-const screenX = 700
-const screenY = 1200
-const squareX = 80
-const squareY = 80
+const screenWidth = 1000
+const screenHeight = 1400
+const squareX = 128
+const squareY = 128
 const boardRows = 7
 const boardColumns = 6
 const boardWidth = squareX*boardColumns
+const boardHeight = squareY*boardRows
 const boardCenterX = boardWidth/2
-const boardCenterY = squareY*boardRows/2
-const boardXOffset = (screenX-squareX*boardColumns)/2
-const boardYOffset = 80
-const buttonX = boardXOffset+boardWidth/2
-const buttonY = 790
+const boardCenterY = boardHeight/2
 const playerX = boardCenterX
+const playerHeight = squareX
+const computerY = 0
+const boardXOffset = (screenWidth-squareX*boardColumns)/2
+const boardYOffset = playerHeight
+const inventoryX = boardXOffset
+const inventoryY = boardYOffset+boardHeight
+const buttonHeight = 128
+const buttonX = boardXOffset+boardWidth/2
+const buttonY = inventoryY+squareY+5
+const humanY = buttonY + squareX
 const numItems = 6
 
 const unitFrameRate = 8
@@ -104,14 +117,14 @@ const unitFrameRate = 8
 const moveFrames = 4
 
 const animConfig = { frameWidth: 32, frameHeight: 32 } 
-const buttonConfig = { fontSize: '32px', fontFamily:'Courier',fontStyle:'Bold'}
+const buttonConfig = { fontSize: '64px', fontFamily:'Courier',fontStyle:'Bold', color:cDarkGreen}
 const unitTextConfig = { fontSize: '12px', fontFamily:'Courier',fontStyle:'Bold'}
-const playerTextConfig = { fontSize: 40, fontFamily:'Courier', fontStyle:'Bold'} // 'Courier'
+const playerTextConfig = { fontSize: 3*squareX/4, fontFamily:'Courier', fontStyle:'Bold'} // 'Courier'
 const winnerTextConfig = {fontSize: '60px', align:'center',fontFamily:'Courier', fontStyle:'Bold'}
 const welcomeTextConfig = { 
     //align: "center",
     fontFamily: "Courier",
-    fontSize: 40,
+    fontSize: 64,
     fontStyle: 'Bold',
     color: cText,
 }
@@ -120,8 +133,6 @@ const ZIGZAG = 'zigzag'
 let timeText
 let board
 let items
-let inventoryX = boardXOffset
-let inventoryY = 670
 let startButton
 let chargeButton
 let restartButton
@@ -129,6 +140,7 @@ let continueButton
 let welcomeButton
 let human
 let computer
+let unitStatus
 
 const square_types = {
     '.': 'square_empty',
@@ -174,7 +186,7 @@ const levels = [
                      "g.gg.g"
                     ],
                 rowChange: 1,
-                color: cBlue,
+                color: cComputer,
             },
             'human':
             {
@@ -183,7 +195,7 @@ const levels = [
                 shield: 2,  
                 items: "kGkkGk",
                 rowChange: -1,
-                color: cGold,
+                color: cHuman,
             }
         }
     },
@@ -266,9 +278,10 @@ class Player
 
     update() 
     {
-        this.hpText.setText('HP '+('0'+this.hp).slice(-2)
-        +' A '+('0'+this.attack).slice(-2)
-        +' S '+('0'+this.shield).slice(-2))
+        this.hpText.setText(
+            ' A '+('0'+this.attack).slice(-2)
+            +' S '+('0'+this.shield).slice(-2)
+            +' H '+('0'+this.hp).slice(-2))
     }
 }
 
@@ -327,9 +340,11 @@ class Unit extends Phaser.GameObjects.Container
             .setDisplaySize(squareX,squareY)
         )
         this.sprite.on("animationcomplete", (pointer) => this.sprite.setFrame(0), this)
+        
         this.statusText = scene.add.text(32,48, this.statusString(), unitTextConfig)
         this.statusText.setColor(textColor)
         this.statusText.setOrigin(0.5,0)
+        this.statusText.setVisible(false)
         this.add([this.sprite, this.statusText])
         this.scene.add.existing(this)
         square.board.add(this)
@@ -339,7 +354,10 @@ class Unit extends Phaser.GameObjects.Container
 
     statusString()
     {
-        return 'A'+this.attack+' S'+this.shield+' H'+this.hp
+        return (
+            'A '+('0'+this.attack).slice(-2)
+            +' S '+('0'+this.shield).slice(-2)
+            +' H '+('0'+this.hp).slice(-2))
     }
 
     update()
@@ -453,8 +471,8 @@ class Square extends Phaser.GameObjects.Container
         image.setDisplaySize(squareX,squareY)
         image.setSize(squareX,squareY)
         image.setOrigin(0,0)
-        image.on('pointerover', (pointer) => this.magnify(), this)
-        image.on('pointerout', (pointer) => this.unmagnify(), this)
+        image.on('pointerdown', (pointer) => this.magnify(), this)
+        image.on('pointerup', (pointer) => this.unmagnify(), this)
         image.setInteractive()
         this.image = image
         this.add(this.image)
@@ -467,9 +485,10 @@ class Square extends Phaser.GameObjects.Container
     {
         if (this.contents.length==1)
         {
-            let unit = this.contents[0]
-            unit.statusText.setFontSize('12px')
-            console.log(unit)
+            unitStatus.setVisible(false)
+            //let unit = this.contents[0]
+            //unit.statusText.setFontSize('12px')
+            //console.log(unit)
         }
     }
 
@@ -478,8 +497,18 @@ class Square extends Phaser.GameObjects.Container
         if (this.contents.length==1)
         {
             let unit = this.contents[0]
-            unit.statusText.setFontSize('30px')
             console.log(unit)
+            if (unit.rowChange==1)
+            {
+                unitStatus.setColor(cComputer)
+            }
+            else
+            {
+                unitStatus.setColor(cHuman)
+            }
+            let text = unit.statusString()
+            unitStatus.setText(' '+text+' ')
+            unitStatus.setVisible(true)
         }
     }
 
@@ -910,7 +939,7 @@ class Welcome extends Phaser.Scene
         /*
         https://www.hostinger.com/tutorials/best-html-web-fonts#:~:text=Web%2Dsafe%20fonts%20are%20fonts,Times%20New%20Roman%2C%20and%20Helvetica.
         */
-        //this.scene.start('Play')
+        this.scene.start('Play')
         const welcome = [
             "",
             "Welcome to ATTACK!",
@@ -929,6 +958,9 @@ class Welcome extends Phaser.Scene
             "",
             "30 GOTO 20"
         ]
+        console.log(boardXOffset)
+        console.log(boardWidth)
+        console.log(buttonX)
         const text = this.add.text(buttonX,0,
             welcome.join("\n"), welcomeTextConfig)
         text.setOrigin(0.5,0)
@@ -937,7 +969,7 @@ class Welcome extends Phaser.Scene
             welcome.join("\n"), welcomeTextConfig)
             */
         startButton = new Button(this, buttonX,buttonY,'button_empty','CLICK TO START!')
-        startButton.button.setDisplaySize(boardWidth,64)
+        startButton.button.setDisplaySize(boardWidth,buttonHeight)
         startButton.button.on('pointerup', (pointer) => this.scene.start("Play"))
     
     
@@ -965,28 +997,27 @@ class Play extends Phaser.Scene
         //timeText = this.add.text(100,0,'time: ', { fontSize: '14px'})
         let levelDefn = levels[levelNum]
 
+        computer = new Player(this, buttonX,computerY, levelDefn.players.computer)
+        unitStatus = this.add.text(buttonX,computerY,"",playerTextConfig)
+        unitStatus.setOrigin(0.5,0)
+        unitStatus.setBackgroundColor(cLightGreen)
         board = new Board(this, boardXOffset, boardYOffset)
-        computer = new Player(this, buttonX,20, levelDefn.players.computer)
-        human = new Player(this, buttonX, 830, levelDefn.players.human)
+        human = new Player(this, buttonX, humanY, levelDefn.players.human)
         items = new Inventory(this, inventoryX,inventoryY, levelDefn['players']['human']['items'])
 
         chargeButton = new Button(this, buttonX,buttonY,'button_empty','CHARGE!')
-        chargeButton.button.setDisplaySize(boardWidth,64)
         chargeButton.button.on('pointerup', (pointer) => this.performActions())
         
         restartButton = new Button(this, buttonX, buttonY, 'button_empty','RESTART!')
-        restartButton.button.setDisplaySize(boardWidth,64)
         restartButton.button.on('pointerup', (pointer) => this.restart())
         restartButton.setVisible(false)
 
         welcomeButton = new Button(this, buttonX,buttonY,'button_empty','NEW GAME!')
-        welcomeButton.button.setDisplaySize(boardWidth,64)
         welcomeButton.button.on('pointerup', (pointer) => this.scene.start('Welcome'))
         welcomeButton.setVisible(false)
 
         let continueText = 'NEXT LEVEL '+(levelNum+1)+'!'
         continueButton = new Button(this, buttonX,buttonY,'button_empty',continueText)
-        continueButton.button.setDisplaySize(boardWidth,64)
         continueButton.button.on('pointerup', (pointer) => this.nextLevel())
         continueButton.setVisible(false)
 
@@ -1129,8 +1160,8 @@ class Play extends Phaser.Scene
 
 const config = {
     type: Phaser.AUTO,
-    width: 600,
-    height: 900,
+    width: screenWidth,
+    height: screenHeight,
     backgroundColor: cBackground,
     parent: 'phaser-example',
     physics: {
