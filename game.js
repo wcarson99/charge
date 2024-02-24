@@ -95,6 +95,7 @@ const boardCenterY = squareY*boardRows/2
 const boardXOffset = (screenX-squareX*boardColumns)/2
 const boardYOffset = 80
 const buttonX = boardXOffset+boardWidth/2
+const buttonY = 790
 const playerX = boardCenterX
 const numItems = 6
 
@@ -107,6 +108,13 @@ const buttonConfig = { fontSize: '32px', fontFamily:'Courier',fontStyle:'Bold'}
 const unitTextConfig = { fontSize: '12px', fontFamily:'Courier',fontStyle:'Bold'}
 const playerTextConfig = { fontSize: 40, fontFamily:'Courier', fontStyle:'Bold'} // 'Courier'
 const winnerTextConfig = {fontSize: '60px', align:'center',fontFamily:'Courier', fontStyle:'Bold'}
+const welcomeTextConfig = { 
+    //align: "center",
+    fontFamily: "Courier",
+    fontSize: 40,
+    fontStyle: 'Bold',
+    color: cText,
+}
 const ZIGZAG = 'zigzag'
 
 let timeText
@@ -114,6 +122,7 @@ let board
 let items
 let inventoryX = boardXOffset
 let inventoryY = 670
+let startButton
 let chargeButton
 let restartButton
 let continueButton
@@ -594,11 +603,11 @@ class Board extends Phaser.GameObjects.Container
     {
         for (let r = 0; r < boardRows; r++)
         {
-            let row = mapDef[r]
-            this.mapData[r] = [];
+            let row = this.mapData[r]
             for (let c = 0; c < row.length; c++)
             {
-                let square = this.mapData[r][c]
+                let square = row[c]
+                square.destroy()
             }   
         }  
     }
@@ -903,26 +912,35 @@ class Welcome extends Phaser.Scene
         */
         //this.scene.start('Play')
         const welcome = [
-            "Welcome to Attack!",
             "",
-            "To play, drag units from the inventory",
-            "on the bottom of the screen",
-            "onto a square on the board.",
+            "Welcome to ATTACK!",
             "",
-            "Click to start"
+            "",
+            "To Play:",
+            "",
+            "10 Drag units",
+            "   from the inventory",
+            "   on the bottom",
+            "   of the screen",
+            "   onto a square",
+            "   on the board.",
+            "",
+            "20 Click CHARGE!",
+            "",
+            "30 GOTO 20"
         ]
-        const text = this.add.text(0,0,
-            welcome.join("\n"),
-            { 
-                align: "center",
-                fontFamily: "Courier",
-                fontSize: 18,
-                fontStyle: 'Bold',
-                color: cText,
-            })
-        this.input.on("pointerup", 
-            function (pointer) { this.scene.start('Play')},
-            this)
+        const text = this.add.text(buttonX,0,
+            welcome.join("\n"), welcomeTextConfig)
+        text.setOrigin(0.5,0)
+        /*
+        const text2 = this.add.text(buttonX,0,
+            welcome.join("\n"), welcomeTextConfig)
+            */
+        startButton = new Button(this, buttonX,buttonY,'button_empty','CLICK TO START!')
+        startButton.button.setDisplaySize(boardWidth,64)
+        startButton.button.on('pointerup', (pointer) => this.scene.start("Play"))
+    
+    
     }
 }
 
@@ -952,25 +970,25 @@ class Play extends Phaser.Scene
         human = new Player(this, buttonX, 830, levelDefn.players.human)
         items = new Inventory(this, inventoryX,inventoryY, levelDefn['players']['human']['items'])
 
-        chargeButton = new Button(this, buttonX,790,'button_empty','CHARGE!')
+        chargeButton = new Button(this, buttonX,buttonY,'button_empty','CHARGE!')
         chargeButton.button.setDisplaySize(boardWidth,64)
         chargeButton.button.on('pointerup', (pointer) => this.performActions())
-
-        restartButton = new Button(this, buttonX, 790, 'button_empty','RESTART!')
+        
+        restartButton = new Button(this, buttonX, buttonY, 'button_empty','RESTART!')
         restartButton.button.setDisplaySize(boardWidth,64)
         restartButton.button.on('pointerup', (pointer) => this.restart())
         restartButton.setVisible(false)
 
+        welcomeButton = new Button(this, buttonX,buttonY,'button_empty','NEW GAME!')
+        welcomeButton.button.setDisplaySize(boardWidth,64)
+        welcomeButton.button.on('pointerup', (pointer) => this.scene.start('Welcome'))
+        welcomeButton.setVisible(false)
+
         let continueText = 'NEXT LEVEL '+(levelNum+1)+'!'
-        continueButton = new Button(this, buttonX,790,'button_empty',continueText)
+        continueButton = new Button(this, buttonX,buttonY,'button_empty',continueText)
         continueButton.button.setDisplaySize(boardWidth,64)
         continueButton.button.on('pointerup', (pointer) => this.nextLevel())
         continueButton.setVisible(false)
-
-        welcomeButton = new Button(this, buttonX,790,'button_empty','NEW GAME!')
-        welcomeButton.button.setDisplaySize(boardWidth,64)
-        welcomeButton.button.on('pointerup', (pointer) => this.newGame())
-        welcomeButton.setVisible(false)
 
         this.physics.add.overlap(board.group, items.group, function(square, item)
         {   
