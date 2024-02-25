@@ -21,6 +21,7 @@ TODO:
 * eliminate Items
 * only 4 actions per turn
 * fix player status alignment
+* intra-move combat?
 . magnify unit on hover
 . consistent fonts
 
@@ -149,29 +150,31 @@ const square_types = {
 }
 
 const unitDefns = {
-    'unit_knight': {'attack':1, 'hp':2, 'shield':3  ,'horizontal':'none'},
-    'unit_goblin': {'attack':2, 'hp':2, 'shield':1, 'horizontal':'none'},
-    'unit_golem': {'attack':3, 'hp':3, 'shield':1, 'horizontal':'none'},
+    'unit_knight': {'attack':3, 'hp':3, 'shield':3  ,'horizontal':'none'},
+    'unit_goblin': {'attack':3, 'hp':4, 'shield':1, 'horizontal':'none'},
+    'unit_golem': {'attack':4, 'hp':6, 'shield':1, 'horizontal':'none'},
+    'unit_troll': {'attack':5, 'hp':5, 'shield':0, 'horizontal':'none'},
     'unit_snake': {'attack':5, 'hp':3, 'shield':0, 'horizontal':ZIGZAG}
 }
 
 const unitAbbrevs = {
     'k':'unit_knight',
     'g':'unit_goblin',
-    'G':'unit_golem'
+    'G':'unit_golem',
+    'T':'unit_troll',
 }
 
 let levelNum = 0
 const runConfig = {
     computer: {
-        hp: 10,
+        hp: 12,
         attack: 2,
         shield: 2,
         rowChange: 1,
         color: cComputer
     },
     human: {
-        hp: 10,
+        hp: 12,
         attack: 2,
         shield: 2,
         rowChange: -1,
@@ -181,12 +184,15 @@ const runConfig = {
         {
             computer: {
                 units: [
-                    "gggggg",
+                    "TggggT",
                     "g.gg.g"
                 ]
             },
             human: {
-                units: 'kGGk'
+                units: [
+                    'kGGGGk',
+                    'kk'
+                ]
             }
         },
         {
@@ -198,7 +204,7 @@ const runConfig = {
                 ]
             },
             human: {
-                units: 'kGkkGkG'
+                units: ['kGkkGkG']
             }
         },
         {
@@ -210,7 +216,7 @@ const runConfig = {
                 ]
             },
             human: {
-                units: 'kkkkGGGG'
+                units: ['kkkkGGGG']
             }
         },
     ]
@@ -734,11 +740,15 @@ class Inventory extends Phaser.GameObjects.Container
     {   
        for (let i=0; i<defn.length;i++)
        {
-            let typ = unitAbbrevs[defn[i]]
-            //console.log('Adding item '+typ)
-            let item = new Item(this.scene, this, typ)
-            item.setVisible(false)
-            this.add(item)
+            let unitRow = defn[i]
+            for (let j=0; j<unitRow.length;j++)
+            {
+                let typ = unitAbbrevs[unitRow[j]]
+                console.log('Adding item '+typ)
+                let item = new Item(this.scene, this, typ)
+                item.setVisible(false)
+                this.add(item)    
+            }
        }
         this.fill()
     }
@@ -796,6 +806,7 @@ class Preload extends Phaser.Scene
 
         this.load.spritesheet('unit_goblin_down', 'unit_goblin_down.png',animConfig)
         this.load.spritesheet('unit_golem_up', 'unit_golem_up.png',animConfig)
+        this.load.spritesheet('unit_troll_down', 'unit_troll_down.png',animConfig)
         this.load.spritesheet('unit_snake_up', 'unit_snake_up.png',animConfig)
     }
 
@@ -831,7 +842,13 @@ class Preload extends Phaser.Scene
             frameRate: unitFrameRate,
             repeat: 0
         })
-
+        this.anims.create({
+            key:'unit_troll_down_anim',
+            frames: 'unit_troll_down',
+            //duration: unitAnimationDuration,
+            frameRate: unitFrameRate,
+            repeat: 0
+        })
         this.anims.create({
             key:'unit_snake_up_anim',
             frames: 'unit_snake_up',
@@ -853,7 +870,7 @@ class Welcome extends Phaser.Scene
     }
     create()
     {
-        levelNum = 1
+        levelNum = 0
         
         //this.scene.start('Play')
         const welcome = [
