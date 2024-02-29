@@ -680,26 +680,33 @@ class Board extends Phaser.GameObjects.Container
             }
         }
 
-        // Update square contents
-        for (let r of this.mapData)
-        {
-            for (let square of r)
+        // TODO: This seems like a turd. How should waiting for moving to complete be
+        // implemented?
+        let timedEvent = this.scene.time.addEvent(
             {
-                square.contents = square.nextContents
-                square.nextContents = []
-            }
-        }
+                delay: 1000,
+                callback: function() {
+                    // Update square contents
+                    for (let r of this.mapData) {
+                        for (let square of r) {
+                            square.contents = square.nextContents
+                            square.nextContents = []
+                        }
+                    }
 
-        // Unit combat
-        for (let r of this.mapData)
-        {
-            for (let square of r)
-            {
-                square.resolveCombat()
-            }
-        }
+                    // Unit combat
+                    for (let r of this.mapData) {
+                        for (let square of r) {
+                            square.resolveCombat()
+                        }
+                    }
 
-        this.addComputerUnits()
+                    this.addComputerUnits()
+                },
+                callbackScope: this,
+            }
+        )
+
     }
 
     addComputerUnits() 
