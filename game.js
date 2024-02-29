@@ -8,7 +8,6 @@ Fonts - https://www.hostinger.com/tutorials/best-html-web-fonts#:~:text=Web%2Dsa
 
 
 TODO:
-* tighten down animation
 * level selection screen
 * scoring based on remaining player and unit HPs
 * 3 good levels
@@ -21,6 +20,7 @@ TODO:
 . magnify unit on hover
 . consistent fonts
 . deploy to glitch
+* tighten down animation
 ? image load issues - local only?
 
 NICE TO HAVE:
@@ -116,13 +116,16 @@ const buttonY = inventoryY+squareY+5
 const humanY = buttonY + squareX
 const numItems = 6
 
-const unitFrameRate = 8
-const moveFrames = 4
+const numFrames = 4
+const animRepeat = 1
+const unitAnimDuration = 1000   
+const unitFrameRate = (1+animRepeat)*numFrames*1000/unitAnimDuration
+//const moveFrames = 4
 
 const animConfig = { frameWidth: 32, frameHeight: 32 } 
-const buttonConfig = { fontSize: '64px', fontFamily:'Courier',fontStyle:'Bold', color:cDarkGreen}
+const buttonConfig = { fontSize: 64, fontFamily:'Courier',fontStyle:'Bold', color:cDarkGreen}
 const playerTextConfig = { fontSize: 80, fontFamily:'Courier', fontStyle:'Bold'} // 'Courier'
-const winnerTextConfig = {fontSize: '128px', align:'center',fontFamily:'Courier', fontStyle:'Bold'}
+const winnerTextConfig = {fontSize: 128, align:'center',fontFamily:'Courier', fontStyle:'Bold'}
 const welcomeTextConfig = { 
     //align: "center",
     fontFamily: "Courier",
@@ -131,8 +134,18 @@ const welcomeTextConfig = {
     color: cText,
 }
 const ZIGZAG = 'zigzag'
-const RIGHT = 'right'
+const CENTER = 'center'
+//const DOWN_RIGHT = 'down_right'
+//const UP_RIGHT = 'up_right'
 const LEFT = 'left'
+const RIGHT = 'right'
+const UP = 'up'
+//const UP_CENTER = 'up_center'
+const DOWN = 'down'
+//const DOWN_CENTER = 'down_center'
+
+let columnChanges = { 'left': -1, 'center': 0, 'right': 1}
+let rowChanges = {'up': -1, 'down':1}
 
 let timeText
 let board
@@ -153,12 +166,13 @@ const square_types = {
 }
 
 const unitDefns = {
-    'unit_knight': {'attack':3, 'hp':3, 'shield':3  ,'horizontal':'none'},
-    'unit_goblin': {'attack':3, 'hp':4, 'shield':1, 'horizontal':'none'},
-    'unit_golem': {'attack':4, 'hp':7, 'shield':3, 'horizontal':'none'},
-    'unit_troll': {'attack':5, 'hp':6, 'shield':1, 'horizontal':'none'},
-    'unit_minotaur': {'attack':5, 'hp':8, 'shield':0,'horizontal':RIGHT},
-    'unit_snake': {'attack':5, 'hp':3, 'shield':0, 'horizontal':ZIGZAG}
+    'unit_knight': {'attack':3, 'hp':3, 'shield':3  ,'movement':CENTER},
+    'unit_goblin': {'attack':3, 'hp':4, 'shield':1, 'movement':CENTER},
+    'unit_golem': {'attack':4, 'hp':7, 'shield':3, 'movement':CENTER},
+    'unit_troll': {'attack':5, 'hp':6, 'shield':1, 'movement':CENTER},
+    'unit_minotaur': {'attack':5, 'hp':8, 'shield':0,'movement':RIGHT},
+    'unit_dragon': {'attack':5, 'hp':8, 'shield':0,'movement':RIGHT},
+    'unit_snake': {'attack':5, 'hp':3, 'shield':0, 'movement':ZIGZAG}
 }
 
 const unitAbbrevs = {
@@ -167,6 +181,7 @@ const unitAbbrevs = {
     'G':'unit_golem',
     'T':'unit_troll',
     'M':'unit_minotaur',
+    'D':'unit_dragon'
 }
 
 let levelNum = 0
@@ -176,7 +191,7 @@ const runConfig = {
         attack: 2,
         shield: 2,
         rowChange: 1,
-        direction: 'down',
+        direction: DOWN,
         color: cComputer
     },
     human: {
@@ -184,14 +199,14 @@ const runConfig = {
         attack: 2,
         shield: 2,
         rowChange: -1,
-        direction: 'up',
+        direction: UP,
         color: cHuman
     },
     levels: [
         {
             computer: {
                 units: [
-                    "TggggT",
+                    "TggTDD",
                     "g.gg.g"
                 ]
             },
@@ -300,53 +315,58 @@ class Unit extends Phaser.GameObjects.Sprite
         this.row = row
         this.player = player
 
-        this.direction = player.direction
-        this.rowChange = player.rowChange
-        this.columnChange = 0
+        this.rowDirection = player.direction
 
         this.defn = unitDefns[typ]
         this.attack = this.defn.attack
         this.hp = this.defn.hp
         this.initialShield = this.defn.shield
         this.shield = this.initialShield
-        this.horizontal = this.defn.horizontal
-        if (this.horizontal==ZIGZAG)
+        this.movement = this.defn.movement
+        if (this.movement==ZIGZAG)
         {
             if (column==0) {
-                this.columnChange = 1
+                this.columnDirection = RIGHT
             }
             else
             {
-                this.columnChange = -1
+                this.columnDirection = LEFT
             }
-        }
-        else if (this.horizontal==LEFT)
-        {
-            this.columnChange = -1
-        }
-        else if (this.horizontal==RIGHT)
-        {
-            this.columnChange = 1
         }
         else
         {
-            this.columnChange = 0
+            this.columnDirection = this.movement
         }
-        //this.setPosition(column*squareX, row*squareY)
         this.setSize(squareX, squareY)
 
-        let imageName = typ+'_'+this.direction
-        this.animKey = imageName+'_anim'
+        let imageName = typ+'_'+this.rowDirection+'_'+this.columnDirection
         
         this.setOrigin(0,0).setDisplaySize(squareX,squareY)
     
-        this.on("animationcomplete", (pointer) => this.setFrame(0), this)
+        this.on("animationcomplete", (pointer) => this.setFrame(this.animFrame()), this)
 
         this.on('pointerdown', (pointer) => this.showStats(), this)
         this.on('pointerup', (pointer) => this.hideStats(), this)
         this.setInteractive({draggable: true})
                 
         square.board.add(this)
+    }
+
+    animFrame()
+    {
+        //return 0
+        if (this.columnDirection==LEFT) {
+            return 4
+        }
+        else {
+            return 0
+        }
+    }
+
+    animKey()
+    {
+        let imageName = this.typ+'_'+this.rowDirection +'_'+this.columnDirection
+        return  imageName+'_anim'
     }
 
     hideStats()
@@ -382,40 +402,56 @@ class Unit extends Phaser.GameObjects.Sprite
     update()
     {
         // TODO: This shouldn't be needed
-        console.log("setting frame")
         //this.sprite.asetFrame(0)
-        this.anims.currentAnim.getFrameByProgress(0)
+        //let frame = this.animFrame()
+        //console.log("setting frame "+frame)
+        //this.anims.currentAnim.getFrameByProgress(0)
         console.log(this)
 
-        if (this.horizontal==ZIGZAG)
+        if (this.movement==ZIGZAG)
         {
-            this.columnChange = -1*this.columnChange
+            if (this.columnDirection==LEFT)
+            {
+                this.columnDirection = RIGHT
+            }
+            else
+            {
+                this.columnDirection = LEFT
+            }
         }
     }
 
     move()
     {
-        this.play(this.animKey)
+        console.log('here '+this.typ)
+        console.log(this)
         if (this.column==boardColumns-1) {
-            if (this.columnChange==1) {
-                this.columnChange = -1
+            if (this.columnDirection==RIGHT)
+            {
+                this.columnDirection = LEFT
             }
-
         }
         else if (this.column==0) {
-            if (this.columnChange==-1) {
-                this.columnChange = 1
+            if (this.columnDirection==LEFT)
+            {
+                console.log(' bounce')
+                this.columnDirection = RIGHT
             }
         }
-        this.row += this.rowChange
-        let rowInc = this.rowChange * squareY / moveFrames
-        this.column += this.columnChange
-        let columnInc = this.columnChange * squareX / moveFrames
+        let rowChange = rowChanges[this.rowDirection]
+        this.row += rowChange
+        let rowInc = rowChange * squareY / (numFrames*(1+animRepeat))
+        let columnChange = columnChanges[this.columnDirection]
+        this.column += columnChange
+        let columnInc = columnChange * squareX / (numFrames*(1+animRepeat))
         console.log(this)
+
+        let startFrame = this.animFrame()
+        this.play(this.animKey(), startFrame=startFrame)
         this.timedEvent = this.scene.time.addEvent(
             {
-                delay: 100,
-                repeat: moveFrames-1,
+                delay: 1000/unitFrameRate,
+                repeat: numFrames*(animRepeat+1)-1,
                 callback: function () {
                     this.y += rowInc
                     this.x += columnInc
@@ -637,7 +673,8 @@ class Board extends Phaser.GameObjects.Container
                     let unit = contents.pop()
                     unit.shield = unit.initialShield
                     unit.move()
-                    movingUnits.push(unit)                        
+                    movingUnits.push(unit)             
+                    console.log(unit)        
                     this.mapData[unit.row][unit.column].nextContents.push(unit)
                 }
             }
@@ -709,7 +746,7 @@ class Item extends Phaser.GameObjects.Sprite
         this.shield = this.initialShield
 
         this.newSquare = null
-        this.animKey = typ+'_up_anim'
+        //this.animKey = typ+'_up_anim'
         
         this.setDisplaySize(squareX,squareY)
         this.setSize(squareX,squareY)
@@ -812,16 +849,17 @@ class Preload extends Phaser.Scene
         this.load.image('button_empty', 'button_empty.png')
         this.load.image('button_charge', 'button_charge2.png')
         this.load.image('button_restart', 'button_restart2.png')
-        this.load.spritesheet('combat', 'combat.png', animConfig)
 
         this.load.image('square_empty_even', 'square_empty_even.png')
         this.load.image('square_empty_odd', 'square_empty_odd.png')
-        this.load.spritesheet('unit_knight_up', 'unit_knight_up.png',animConfig)
 
+        this.load.spritesheet('combat', 'combat.png', animConfig)
+        this.load.spritesheet('unit_knight_up', 'unit_knight_up.png',animConfig)
         this.load.spritesheet('unit_goblin_down', 'unit_goblin_down.png',animConfig)
         this.load.spritesheet('unit_golem_up', 'unit_golem_up.png',animConfig)
         this.load.spritesheet('unit_troll_down', 'unit_troll_down.png',animConfig)
         this.load.spritesheet('unit_minotaur_up', 'unit_minotaur_right.png',animConfig)
+        this.load.spritesheet('unit_dragon_down', 'unit_dragon_right.png',animConfig)
         this.load.spritesheet('unit_snake_up', 'unit_snake_up.png',animConfig)
     }
 
@@ -836,46 +874,57 @@ class Preload extends Phaser.Scene
             //showBeforeDelay: false,
         })
         this.anims.create({
-            key:'unit_goblin_down_anim',
+            key:'unit_goblin_down_center_anim',
             frames: 'unit_goblin_down',
             //duration: unitAnimationDuration,
             frameRate: unitFrameRate,
-            repeat: 0
+            repeat: animRepeat,
         })
         this.anims.create({
-            key:'unit_knight_up_anim',
+            key:'unit_knight_up_center_anim',
             frames: 'unit_knight_up',
             frameRate: unitFrameRate,
-            repeat: 0
-
+            repeat: animRepeat,
         })
         this.anims.create({
-            key:'unit_golem_up_anim',
+            key:'unit_golem_up_center_anim',
             frames: 'unit_golem_up',
             frameRate: unitFrameRate,
-            repeat: 0
+            repeat: animRepeat,
         })
         this.anims.create({
-            key:'unit_minotaur_up_anim',
-            frames: 'unit_minotaur_up',
-            frameRate: unitFrameRate,
-            repeat: 0
-        })
-        this.anims.create({
-            key:'unit_troll_down_anim',
+            key:'unit_troll_down_center_anim',
             frames: 'unit_troll_down',
             //duration: unitAnimationDuration,
             frameRate: unitFrameRate,
-            repeat: 0
+            repeat: animRepeat,
         })
         this.anims.create({
-            key:'unit_snake_up_anim',
-            frames: 'unit_snake_up',
-            //duration: unitAnimationDuration,
+            key:'unit_minotaur_up_right_anim',
+            frames: this.anims.generateFrameNames('unit_minotaur_up', {start:0, end:3}),
             frameRate: unitFrameRate,
-            repeat: 1
-
+            repeat: animRepeat,
         })
+        this.anims.create({
+            key:'unit_minotaur_up_left_anim',
+            frames: this.anims.generateFrameNames('unit_minotaur_up', {start:4, end:7}),
+            frameRate: unitFrameRate,
+            repeat: animRepeat,
+        })
+        this.anims.create({
+            key:'unit_dragon_down_right_anim',
+            frames: this.anims.generateFrameNames('unit_dragon_down', {start:0, end:3}),
+            frameRate: unitFrameRate,
+            repeat: animRepeat,
+        })
+        
+        this.anims.create({
+            key:'unit_dragon_down_left_anim',
+            frames: this.anims.generateFrameNames('unit_dragon_down', {start:4, end:7}),
+            frameRate: unitFrameRate,
+            repeat: animRepeat,
+        })
+        
         this.scene.start('Welcome')
     }
 
