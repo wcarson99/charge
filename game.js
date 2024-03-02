@@ -206,7 +206,7 @@ const runConfig = {
         {
             computer: {
                 units: [
-                    "TggTDD",
+                    "TgDD..",
                     "g.gg.g"
                 ]
             },
@@ -297,7 +297,6 @@ class Player extends Phaser.GameObjects.Text
 }
 
 function setUnitStats(unit) {
-    console.log(unit)
     unitStats.setText(unit.statsString())
     unitStats.setColor(unit.player.color)
     unitStats.setVisible(true)
@@ -392,7 +391,6 @@ class Unit extends Phaser.GameObjects.Sprite
 
     statsString()
     {
-        console.log(this.shield)
         return (
             'A '+('0'+this.attack).slice(-2)
             +' S '+('0'+this.shield).slice(-2)
@@ -401,13 +399,6 @@ class Unit extends Phaser.GameObjects.Sprite
 
     update()
     {
-        // TODO: This shouldn't be needed
-        //this.sprite.asetFrame(0)
-        //let frame = this.animFrame()
-        //console.log("setting frame "+frame)
-        //this.anims.currentAnim.getFrameByProgress(0)
-        console.log(this)
-
         if (this.movement==ZIGZAG)
         {
             if (this.columnDirection==LEFT)
@@ -423,8 +414,6 @@ class Unit extends Phaser.GameObjects.Sprite
 
     move()
     {
-        console.log('here '+this.typ)
-        console.log(this)
         if (this.column==boardColumns-1) {
             if (this.columnDirection==RIGHT)
             {
@@ -444,8 +433,7 @@ class Unit extends Phaser.GameObjects.Sprite
         let columnChange = columnChanges[this.columnDirection]
         this.column += columnChange
         let columnInc = columnChange * squareX / (numFrames*(1+animRepeat))
-        console.log(this)
-
+        
         let startFrame = this.animFrame()
         this.play(this.animKey(), startFrame=startFrame)
         this.timedEvent = this.scene.time.addEvent(
@@ -490,11 +478,17 @@ class Unit extends Phaser.GameObjects.Sprite
 
     fightPlayer(player)
     {
+        console.log("fightPlayer ")
+        console.log(this)
+        console.log(player)
         while (this.hp>0 && player.hp>0)
         {
             this.takeDamage(player.attack)
             player.takeDamage(this.attack)
         }
+        console.log("after")
+        console.log(this)
+        console.log(player)
     }
 }
 
@@ -597,8 +591,10 @@ class Square extends Phaser.GameObjects.Container
                 unit.fightPlayer(computer)
             }
             if (unit.hp<=0) {
-                unit.destroy()
                 this.contents = []
+                console.log('destroy')
+                console.log(unit)
+                unit.destroy()
             }
             else
             {
@@ -661,7 +657,7 @@ class Board extends Phaser.GameObjects.Container
         }  
     }
 
-    updateMap()
+    moveUnits()
     {
         // Advance all units, handling top and bottom rows as attacking a player
         let movingUnits = []
@@ -674,47 +670,32 @@ class Board extends Phaser.GameObjects.Container
                     unit.shield = unit.initialShield
                     unit.move()
                     movingUnits.push(unit)             
-                    console.log(unit)        
                     this.mapData[unit.row][unit.column].nextContents.push(unit)
                 }
             }
         }
+    }
 
-        // TODO: This seems like a turd. How should waiting for moving to complete be
-        // implemented?
-        let timedEvent = this.scene.time.addEvent(
-            {
-                delay: 1000,
-                callback: function() {
-                    // Update square contents
-                    for (let r of this.mapData) {
-                        for (let square of r) {
-                            square.contents = square.nextContents
-                            square.nextContents = []
-                        }
-                    }
-
-                    // Unit combat
-                    for (let r of this.mapData) {
-                        for (let square of r) {
-                            square.resolveCombat()
-                        }
-                    }
-
-                    this.addComputerUnits()
-                },
-                callbackScope: this,
+    resolveCombat() {
+        for (let r of this.mapData) {
+            for (let square of r) {
+                square.contents = square.nextContents
+                square.nextContents = []
             }
-        )
+        }
 
+        // Unit combat
+        for (let r of this.mapData) {
+            for (let square of r) {
+                square.resolveCombat()
+            }
+        }
     }
 
     addComputerUnits() 
     {
         this.unitData = []
-        console.log(levelNum)
         let level = runConfig.levels[levelNum]
-        console.log(level)
         let units_def = level.computer.units
         if (units_def.length==this.turn)
         {
@@ -766,7 +747,6 @@ class Item extends Phaser.GameObjects.Sprite
     }
     statsString()
     {
-        console.log(this.shield)
         return (
             'A '+('0'+this.attack).slice(-2)
             +' S '+('0'+this.shield).slice(-2)
@@ -1030,9 +1010,9 @@ class Play extends Phaser.Scene
 
         this.input.on('dragstart', function (pointer, gameObject, dragX, dragY) {
             gameObject.setDisplaySize(squareX/4,squareY/4)
-            console.log(gameObject)
-            console.log(pointer)
-            console.log((pointer.downX-gameObject.x)+' '+(pointer.downY-gameObject.y))
+            //console.log(gameObject)
+            //console.log(pointer)
+            //console.log((pointer.downX-gameObject.x)+' '+(pointer.downY-gameObject.y))
             gameObject.setPosition(gameObject.x+squareX/4, gameObject.y+squareY/4)
             setUnitStats(gameObject)
             
@@ -1081,53 +1061,71 @@ class Play extends Phaser.Scene
         //levelNum += 1
         this.scene.start('Play')
     }
+
     performActions()
     {
         chargeButton.setVisible(false)
-        board.updateMap()
-        items.fill()
 
+        // Move units
+        let moveEvent = this.time.addEvent(
+            {
+                callback: function() {
+                    board.moveUnits()
+                },
+                callbackScope: this,
+            }
+        )
+        // Resolve combat
+        let combatEvent = this.time.addEvent(
+            {
+                delay: 1000,
+                callback: function() {
+                    board.resolveCombat()
+                    this.changeState()
+                },
+                callbackScope: this,
+            }
+        )
+    }
+
+    changeState() {
         human.update()
         computer.update()
-        if (human.hp<=0 || computer.hp<=0)
-        {
-            let text = this.add.text(buttonX,400,'', 
-                winnerTextConfig).setOrigin(0.5)
-            if (human.hp==computer.hp)
-            {
-                text.setColor(cComputer)
-                text.setText("No\nwinner!")
-                welcomeButton.setVisible(true)
-            }
-            else if (human.hp>computer.hp)
-            {
-                levelNum +=1
-                if (levelNum==levels.length){
-                    text.setColor(cHuman)
-                    text.setText("The\ncomputer\nis\ndefeated!\n")
-                    welcomeButton.setVisible(true)
-                }
-                else {
-                    text.setColor(cHuman)
-                    text.setText("The\nhuman\nwins!")
-                    //let continueText = 'NEXT LEVEL '+(levelNum+1)+'!'
-                    //continueButton.text.setText(continueText)
-                    continueButton.setVisible(true)
-                }
-            }
-            else
-            {
-                text.setColor(cComputer)
-                text.setText("The\nhuman\nis\ndefeated!")
-                welcomeButton.setVisible(true)
-            }
-        }
-        else
-        {
-            chargeButton.setVisible(true)
-        }
 
+        if (human.hp<=0 || computer.hp<=0) {
+            let text = this.add.text(buttonX,400,'', 
+                 winnerTextConfig).setOrigin(0.5)
+             if (human.hp==computer.hp) {
+                 text.setColor(cComputer)
+                 text.setText("No\nwinner!")
+                 welcomeButton.setVisible(true)
+             }
+             else if (human.hp>computer.hp) {
+                 levelNum +=1
+                 if (levelNum==levels.length) {
+                     text.setColor(cHuman)
+                     text.setText("The\ncomputer\nis\ndefeated!\n")
+                     welcomeButton.setVisible(true)
+                 }
+                 else {
+                     text.setColor(cHuman)
+                     text.setText("The\nhuman\nwins!")
+                     continueButton.setVisible(true)
+                 }
+             }
+             else {
+                 text.setColor(cComputer)
+                 text.setText("The\nhuman\nis\ndefeated!")
+                 welcomeButton.setVisible(true)
+             }
+         }
+         else {        
+             board.addComputerUnits()
+             items.fill()
+             chargeButton.setVisible(true)
+         } 
     }
+
     onTimer()
     {
         if (false)
