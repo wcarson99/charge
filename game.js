@@ -12,7 +12,6 @@ TODO:
 * scoring based on remaining player and unit HPs
 * 3 good levels
 * fill out unit types
-* combat on move completion
 * reset units to inventory
 * eliminate Items
 . fix player stats alignment
@@ -20,7 +19,8 @@ TODO:
 . magnify unit on hover
 . consistent fonts
 . deploy to glitch
-* tighten down animation
+. tighten down animation
+. combat on move completion
 ? image load issues - local only?
 
 NICE TO HAVE:
@@ -171,7 +171,9 @@ const unitDefns = {
     'unit_golem': {'attack':4, 'hp':7, 'shield':3, 'movement':CENTER},
     'unit_troll': {'attack':5, 'hp':6, 'shield':1, 'movement':CENTER},
     'unit_minotaur': {'attack':5, 'hp':8, 'shield':0,'movement':RIGHT},
+    'unit_lminotaur': {'attack':5, 'hp':8, 'shield':0,'movement':LEFT, 'texture': 'unit_minotaur'},
     'unit_dragon': {'attack':5, 'hp':8, 'shield':0,'movement':RIGHT},
+    'unit_ldragon': {'attack':5, 'hp':8, 'shield':0,'movement':LEFT, 'texture': 'unit_dragon'},
     'unit_snake': {'attack':5, 'hp':3, 'shield':0, 'movement':ZIGZAG}
 }
 
@@ -181,7 +183,9 @@ const unitAbbrevs = {
     'G':'unit_golem',
     'T':'unit_troll',
     'M':'unit_minotaur',
-    'D':'unit_dragon'
+    'm':'unit_lminotaur',
+    'D':'unit_dragon',
+    'd':'unit_ldragon',
 }
 
 let levelNum = 0
@@ -206,13 +210,13 @@ const runConfig = {
         {
             computer: {
                 units: [
-                    "TgDD..",
-                    "g.gg.g"
+                    "..dD..",
+                    "T.gg.T"
                 ]
             },
             human: {
                 units: [
-                    'kGMMGk',
+                    'kGmMGk',
                     'kk'
                 ]
             }
@@ -306,7 +310,7 @@ class Unit extends Phaser.GameObjects.Sprite
 {
     constructor(scene, square, typ, column, row, player)
     {
-        super(scene, column*squareX, row*squareY,typ+'_'+player.direction)
+        super(scene, column*squareX, row*squareY,textureFor(typ,player.direction))
         this.scene.add.existing(this)
 
         this.typ = typ
@@ -337,13 +341,10 @@ class Unit extends Phaser.GameObjects.Sprite
             this.columnDirection = this.movement
         }
         this.setSize(squareX, squareY)
-
-        let imageName = typ+'_'+this.rowDirection+'_'+this.columnDirection
-        
         this.setOrigin(0,0).setDisplaySize(squareX,squareY)
+        this.setFrame(this.animFrame())
     
         this.on("animationcomplete", (pointer) => this.setFrame(this.animFrame()), this)
-
         this.on('pointerdown', (pointer) => this.showStats(), this)
         this.on('pointerup', (pointer) => this.hideStats(), this)
         this.setInteractive({draggable: true})
@@ -364,8 +365,8 @@ class Unit extends Phaser.GameObjects.Sprite
 
     animKey()
     {
-        let imageName = this.typ+'_'+this.rowDirection +'_'+this.columnDirection
-        return  imageName+'_anim'
+        let texture = textureFor(this.typ, this.rowDirection) +'_'+this.columnDirection
+        return  texture+'_anim'
     }
 
     hideStats()
@@ -716,11 +717,20 @@ class Board extends Phaser.GameObjects.Container
     }
 }
 
+function textureFor(typ, rowDirection) {
+    let defn = unitDefns[typ]
+    //console.log(typ)
+    let texture = defn.texture
+    if (texture===undefined) {
+        texture = typ
+    }
+    return texture+'_'+rowDirection
+}
+
 class Item extends Phaser.GameObjects.Sprite
 {   
-    constructor(scene, inventory, typ, player)
-    {
-        super(scene,0,0,typ+'_up')
+    constructor(scene, inventory, typ, player) {
+        super(scene,0,0,textureFor(typ,'up'))
         this.scene.add.existing(this)
 
         this.items = inventory
@@ -730,6 +740,7 @@ class Item extends Phaser.GameObjects.Sprite
         this.defn = unitDefns[typ]
         this.attack = this.defn.attack
         this.hp = this.defn.hp
+        this.columnDirection = this.defn.movement
         this.initialShield = this.defn.shield
         this.shield = this.initialShield
 
@@ -741,9 +752,20 @@ class Item extends Phaser.GameObjects.Sprite
         this.setInteractive({ draggable: true})
         //this.setInteractive(scene.input.makePixelPerfect());
         this.setOrigin(0,0)
-
+        this.setFrame(this.animFrame())
+        console.log(this)
         
         inventory.group.add(this)
+    }
+    animFrame()
+    {
+        //return 0
+        if (this.columnDirection==LEFT) {
+            return 4
+        }
+        else {
+            return 0
+        }
     }
     statsString()
     {
@@ -774,30 +796,25 @@ class Inventory extends Phaser.GameObjects.Container
         this.createItems(defn);
     }
 
-    createItems(defn)
-    {   
-       for (let i=0; i<defn.length;i++)
-       {
+    createItems(defn) {
+       for (let i=0; i<defn.length;i++) {
             let unitRow = defn[i]
-            for (let j=0; j<unitRow.length;j++)
-            {
+            for (let j=0; j<unitRow.length;j++) {
                 let typ = unitAbbrevs[unitRow[j]]
                 console.log('Adding item '+typ)
                 let item = new Item(this.scene, this, typ, human)
                 item.setVisible(false)
                 this.add(item)    
             }
-       }
+        }
         this.fill()
     }
 
     fill()
     {        
         let gameObjects = this.getAll('newSquare')
-        for (let item of gameObjects)
-        {   
-            if (item.visible==true)
-            {
+        for (let item of gameObjects) {   
+            if (item.visible==true) {
                 this.remove(item)
                 item.setVisible(false)
                 this.add(item)
@@ -805,16 +822,14 @@ class Inventory extends Phaser.GameObjects.Container
         }
 
         gameObjects = this.getAll('newSquare')
-        for (let i=0; i<gameObjects.length; i++)
-        {
+        for (let i=0; i<gameObjects.length; i++) {
             let item = gameObjects[i]
             item.row=0
             item.column = i
             item.setPosition(i*squareX, 0)
             item.setVisible(true)
             this.add(item)
-            if (i==numItems-1)
-            {
+            if (i==numItems-1) {
                 break
             }
         }
@@ -894,6 +909,18 @@ class Preload extends Phaser.Scene
         })
         this.anims.create({
             key:'unit_minotaur_up_left_anim',
+            frames: this.anims.generateFrameNames('unit_minotaur_up', {start:4, end:7}),
+            frameRate: unitFrameRate,
+            repeat: animRepeat,
+        })
+        this.anims.create({
+            key:'unit_lminotaur_up_right_anim',
+            frames: this.anims.generateFrameNames('unit_minotaur_up', {start:0, end:3}),
+            frameRate: unitFrameRate,
+            repeat: animRepeat,
+        })
+        this.anims.create({
+            key:'unit_lminotaur_up_left_anim',
             frames: this.anims.generateFrameNames('unit_minotaur_up', {start:4, end:7}),
             frameRate: unitFrameRate,
             repeat: animRepeat,
@@ -1042,31 +1069,25 @@ class Play extends Phaser.Scene
         this.timedEvent = this.time.addEvent({ delay: 2000, callback: this.onTimer, callbackScope: this, loop: true });
     }
 
-    newGame()
-    {
+    newGame() {
         welcomeButton.setVisible(false)
         levelNum = 0
         this.scene.start('Welcome')
     }
-    restart()
-    {
+
+    restart() {
         console.log('Restarting')
         board.clear()
         this.scene.restart()
     }
 
-    nextLevel()
-    {
+    nextLevel() {
         console.log('Next Level')
-        //levelNum += 1
         this.scene.start('Play')
     }
 
-    performActions()
-    {
+    performActions() {
         chargeButton.setVisible(false)
-
-        // Move units
         let moveEvent = this.time.addEvent(
             {
                 callback: function() {
@@ -1075,7 +1096,7 @@ class Play extends Phaser.Scene
                 callbackScope: this,
             }
         )
-        // Resolve combat
+        // Delay to allow move animation to complete
         let combatEvent = this.time.addEvent(
             {
                 delay: 1000,
