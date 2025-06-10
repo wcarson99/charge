@@ -1196,6 +1196,12 @@ const config = {
             //debug: true
         }
     },
+    scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+        width: screenWidth,
+        height: screenHeight
+    },
     pixelArt: true,
     scene: [Preload, Welcome, Play]
 };
