@@ -248,7 +248,7 @@ const runConfig = {
     ]
 }
 
-levels = runConfig.levels
+var levels = runConfig.levels
 
 class Player extends Phaser.GameObjects.Text
 {
